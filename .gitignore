@@ -399,3 +399,11 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Next.js
+.next/
+out/
+tsconfig.tsbuildinfo
+
+# Env files
+.env*.local
