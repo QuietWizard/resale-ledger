@@ -1,19 +1,34 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { supabase, LISTINGS_TABLE } from "@/lib/supabase";
 import type { Listing } from "@/lib/types";
 import { formatCurrency, stripHtml } from "@/lib/format";
+import { deleteListing, reprocessListing } from "@/lib/capture";
 
 type Platform = "ebay" | "fb";
+const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"] as const;
 
 export default function ItemDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [listing, setListing] = useState<Listing | null>(null);
   const [platform, setPlatform] = useState<Platform>("ebay");
   const [copied, setCopied] = useState(false);
+
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editCondition, setEditCondition] = useState("");
+  const [editMissingItems, setEditMissingItems] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
+
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     async function loadListing() {
@@ -55,12 +70,76 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
     setTimeout(() => setCopied(false), 1500);
   }
 
+  function startEditing() {
+    if (!listing) return;
+    setEditName(listing.name ?? "");
+    setEditCondition(listing.seller_condition ?? "");
+    setEditMissingItems(listing.missing_items ?? "");
+    setEditNotes(listing.seller_notes ?? "");
+    setRetryError(null);
+    setEditing(true);
+  }
+
+  async function submitRetry(e: React.FormEvent) {
+    e.preventDefault();
+    if (!listing?.photo_url || retrying) return;
+
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      await reprocessListing(listing.id, listing.photo_url, {
+        name: editName,
+        sellerCondition: editCondition,
+        missingItems: editMissingItems,
+        sellerNotes: editNotes,
+      });
+      router.push("/");
+    } catch (err) {
+      setRetryError(err instanceof Error ? err.message : "Failed to retry listing");
+      setRetrying(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!listing || deleting) return;
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteListing(listing.id, listing.photo_url);
+      router.push("/");
+    } catch (err) {
+      console.error("Failed to delete listing:", err);
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
+  }
+
   return (
     <div className="mx-auto min-h-screen max-w-[480px] bg-paper pb-10">
-      <div className="flex items-center gap-3 border-b border-line px-5 py-4">
+      <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
         <Link href="/" className="font-mono text-[13px] text-ledger">
           ← Feed
         </Link>
+        {!editing && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={startEditing}
+              className="font-mono text-[11px] uppercase tracking-wider text-ledger"
+            >
+              Edit &amp; Retry
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="font-mono text-[11px] uppercase tracking-wider text-stamp disabled:opacity-50"
+            >
+              {deleting ? "Deleting…" : confirmingDelete ? "Confirm?" : "Delete"}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="px-5 py-5">
@@ -70,6 +149,94 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         )}
 
+        {editing ? (
+          <form onSubmit={submitRetry} className="flex flex-col gap-4">
+            <p className="text-[13px] text-ink-soft">
+              Correct any details below, then re-run the AI pipeline against the same photo.
+            </p>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[11px] uppercase tracking-wider text-ink-soft">
+                Name <span className="normal-case tracking-normal">(optional)</span>
+              </span>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="e.g. the exact product name, if you know it"
+                className="rounded-lg border border-line bg-paper-card px-3.5 py-3 text-sm text-ink placeholder:text-ink-soft/60 focus:outline-none focus:ring-2 focus:ring-ledger"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[11px] uppercase tracking-wider text-ink-soft">
+                Condition <span className="normal-case tracking-normal">(optional)</span>
+              </span>
+              <select
+                value={editCondition}
+                onChange={(e) => setEditCondition(e.target.value)}
+                className="rounded-lg border border-line bg-paper-card px-3.5 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ledger"
+              >
+                <option value="">Not sure / skip</option>
+                {CONDITIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[11px] uppercase tracking-wider text-ink-soft">
+                Missing Items <span className="normal-case tracking-normal">(optional)</span>
+              </span>
+              <input
+                type="text"
+                value={editMissingItems}
+                onChange={(e) => setEditMissingItems(e.target.value)}
+                placeholder="e.g. no remote, missing battery cover"
+                className="rounded-lg border border-line bg-paper-card px-3.5 py-3 text-sm text-ink placeholder:text-ink-soft/60 focus:outline-none focus:ring-2 focus:ring-ledger"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[11px] uppercase tracking-wider text-ink-soft">
+                Notes <span className="normal-case tracking-normal">(optional)</span>
+              </span>
+              <textarea
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                placeholder="Anything else worth mentioning"
+                rows={3}
+                className="resize-none rounded-lg border border-line bg-paper-card px-3.5 py-3 text-sm text-ink placeholder:text-ink-soft/60 focus:outline-none focus:ring-2 focus:ring-ledger"
+              />
+            </label>
+
+            {retryError && (
+              <p className="rounded-lg border border-stamp bg-paper-card p-3 text-[13px] text-stamp">
+                {retryError}
+              </p>
+            )}
+
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="flex-1 rounded-lg border border-line px-3.5 py-3 font-body text-sm font-semibold text-ink-soft active:scale-[0.97]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={retrying}
+                className="flex-[2] rounded-lg bg-ledger px-3.5 py-3 font-body text-sm font-semibold text-paper-card shadow-card active:scale-[0.97] disabled:opacity-60"
+              >
+                {retrying ? "Restarting…" : "Save & Retry"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
         <h1 className="font-display text-[22px] font-semibold leading-tight">{title}</h1>
         <p className="mt-1 text-[13px] text-ink-soft">
           {[listing.brand, listing.model, listing.category].filter(Boolean).join(" · ")}
@@ -231,6 +398,8 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
             >
               {copied ? "Copied ✓" : "Copy Draft"}
             </button>
+          </>
+        )}
           </>
         )}
       </div>
