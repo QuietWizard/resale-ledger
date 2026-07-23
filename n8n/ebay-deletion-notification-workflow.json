@@ -1,0 +1,59 @@
+{
+  "id": "hV3rN9eXpQ2mZs8k",
+  "name": "eBay Account Deletion — Notification Receiver (POST)",
+  "nodes": [
+    {
+      "id": "b5ab8a2e-2aac-453d-bf52-1c9d62b1d4a4",
+      "name": "Receive eBay Notification (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ebay-notifications",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "notes": "Actual MARKETPLACE_ACCOUNT_DELETION notifications land here. This app only uses eBay's Browse API via client_credentials (no user OAuth, no eBay user PII stored), so there's nothing to delete — this just acknowledges receipt so eBay's compliance check passes. Signature verification (X-EBAY-SIGNATURE) is skipped for that reason; add it if this app ever stores eBay user data tied to buyer/seller accounts.",
+      "webhookId": "a77d14ce-6310-4d70-a4d1-746bee1f1b28"
+    },
+    {
+      "id": "2fb457cb-52f9-410d-9c10-74bcea168efa",
+      "name": "Respond Ack",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        220,
+        200
+      ],
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 204
+        }
+      },
+      "notes": "204 No Content — matches eBay's own reference SDK behavior on successful processing."
+    }
+  ],
+  "connections": {
+    "Receive eBay Notification (POST)": {
+      "main": [
+        [
+          {
+            "node": "Respond Ack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

@@ -1,7 +1,7 @@
 # Resale Ledger
 
 Photograph a household item, get back a priced, ready-to-post eBay + Facebook
-Marketplace listing draft. Front end only — the actual identify/research/draft
+Marketplace listing draft. Front end only — the actual identify/research/value/draft
 work happens in an n8n workflow that writes results back to Supabase.
 
 ## Stack
@@ -14,15 +14,24 @@ work happens in an n8n workflow that writes results back to Supabase.
 
 1. **Supabase**
    - Create a project at supabase.com (or point at your self-hosted instance).
-   - Open the SQL editor and run `supabase-setup.sql` from this repo.
+   - Open the SQL editor and run `supabase-setup.sql` from this repo. This creates the
+     `listings` table, the `listing-photos` storage bucket, and enables Realtime.
    - Copy your Project URL and anon key from Settings → API.
 
-2. **Env vars**
-   - `cp .env.local.example .env.local`
-   - Fill in `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and
-     `NEXT_PUBLIC_N8N_CAPTURE_WEBHOOK_URL` (see below).
+2. **n8n**
+   - Import [`n8n/resell-ledger-ai-workflow.json`](n8n/resell-ledger-ai-workflow.json)
+     into your n8n instance and set the environment variables it needs (AI provider,
+     Brave Search, eBay, Supabase service key, `WEBHOOK_SECRET`, etc. — see the node
+     notes and the workflow's own webhook path `/resell-research`).
+   - Activate the workflow and copy its webhook URL.
 
-3. **Run it**
+3. **Env vars**
+   - `cp .env.local.example .env.local`
+   - Fill in `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+     `NEXT_PUBLIC_N8N_CAPTURE_WEBHOOK_URL`, and `NEXT_PUBLIC_N8N_WEBHOOK_SECRET` (must
+     match the `WEBHOOK_SECRET` env var configured on the n8n side).
+
+4. **Run it**
    ```
    npm install
    npm run dev
@@ -31,46 +40,41 @@ work happens in an n8n workflow that writes results back to Supabase.
    the n8n workflow exists — items will just sit at "processing" forever until
    n8n is wired up.
 
-## n8n workflow (build this in your n8n instance)
+## How capture works
 
-Unlike the youtube-summary workflow (1-hour cron, pulls new videos), this one
-is **event-driven** — it does nothing until the front end calls its webhook.
+1. The **New Listing** page (`/new`) prompts for a photo (camera or upload), then shows
+   a form for `name`, `seller_condition` (New / Like New / Good / Fair / Poor), and
+   `missing_items` / `seller_notes` — all optional. The more of these the seller fills
+   in, the more accurate the AI's condition-aware pricing and copy will be; leaving
+   them blank still works, the workflow just falls back to "Unknown" condition.
+2. On submit (`src/lib/capture.ts`), the front end inserts a row into `listings`
+   (defaults to `ai_status = 'processing'`) with those fields, uploads the photo to the
+   `listing-photos` bucket, and PATCHes the row with the resulting `photo_url`.
+3. It then POSTs `{ item_id, photo_url, name, seller_condition, missing_items,
+   seller_notes }` to the n8n webhook, with an `x-webhook-secret` header, and returns to
+   the feed.
+4. n8n responds immediately (see the workflow's "Respond to Webhook" node) and does
+   the identify → research → value → draft work asynchronously, writing results back
+   to the same `listings` row via the Supabase REST API.
+5. Because the front end subscribes to Supabase Realtime on `listings`, the moment n8n
+   sets `ai_status = 'complete'` (or `'failed'`), the UI updates with no polling needed.
 
-**Trigger:** Webhook node, POST `/resale-capture`, receives `{ item_id, photo_url }`.
-
-1. **Identify** — HTTP Request to the Claude API (vision), given `photo_url`.
-   Prompt: *"Identify this object. Return JSON: {name, brand, model, category,
-   condition_notes}. If brand/model isn't visible, say so explicitly rather
-   than guessing."*
-
-2. **Research** — HTTP Request to the Claude API with the `web_search` tool
-   enabled, given the identification JSON. Prompt: *"Search for (1) this
-   item's original MSRP if it's a known product, (2) current asking prices on
-   resale/marketplace sites. Return JSON: {original_price, price_low,
-   price_high, suggested_price, research_summary}."*
-   Note: there's no public API for eBay "sold" comps (Terapeak requires an
-   eBay Store subscription, and scraping eBay's sold-listings page would
-   violate their terms) — this step reasons from active listings and general
-   market info, not scraped sold data. `research_summary` should say so.
-
-3. **Draft** — HTTP Request to the Claude API, given the combined JSON so far.
-   Prompt: *"Write two listings. One eBay-style (detailed, keyword-rich title,
-   structured condition/spec description). One Facebook Marketplace-style
-   (short, casual, local-pickup framing). Return JSON: {ebay_title,
-   ebay_description, fb_description}."*
-
-4. **Write back to Supabase** — use n8n's Supabase node (or an HTTP Request to
-   the Supabase REST API) to `UPDATE items SET ... WHERE id = {{item_id}}`,
-   setting `status = 'ready'` and all the fields gathered above.
-
-Because the front end subscribes to Supabase Realtime, the moment this last
-step commits, the item flips from "processing" to showing its price and
-drafts — no polling needed.
+See [`n8n/resell-ledger-ai-workflow.json`](n8n/resell-ledger-ai-workflow.json) for the
+full pipeline (vision ID → Brave Search research → eBay API valuation → AI-written
+eBay + Facebook Marketplace drafts) and its per-node notes for exactly what each step
+does and which env vars it needs.
 
 ## Notes
 
-- RLS on `items` and the `item-photos` bucket is currently wide open (see
+- RLS on `listings` and the `listing-photos` bucket is currently wide open (see
   `supabase-setup.sql`) since this is a single-user tool on your own network.
-  Tighten it if you ever expose this beyond your LAN/VPN.
-- Photos are stored in the public `item-photos` Supabase Storage bucket so the
+  Tighten it if you ever expose this beyond your LAN/VPN. The same applies to
+  `NEXT_PUBLIC_N8N_WEBHOOK_SECRET`, which is visible in the browser bundle — it's a
+  basic filter against stray requests, not real authentication.
+- Photos are stored in the public `listing-photos` Supabase Storage bucket so the
   feed can render thumbnails directly via their public URL.
+- If a listing's `ai_status` ends up `'failed'`, the item detail page shows
+  `error_step` and `error_message` (written by n8n's error handler) instead of the
+  price/draft sections. There's currently no in-app retry button — re-fire the
+  webhook manually (or from n8n) with the same `item_id`/`photo_url` once the
+  underlying issue (bad API key, rate limit, etc.) is fixed.

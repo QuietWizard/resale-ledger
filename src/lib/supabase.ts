@@ -12,5 +12,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export const ITEM_PHOTOS_BUCKET = "item-photos";
+export const LISTINGS_TABLE = "listings";
+export const LISTING_PHOTOS_BUCKET = "listing-photos";
+
+// Fires the n8n identify/research/draft pipeline for a newly-captured listing.
 export const N8N_CAPTURE_WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_CAPTURE_WEBHOOK_URL!;
+
+// Sent as the x-webhook-secret header so the n8n workflow's "Verify Webhook Secret"
+// node accepts the request. This is a NEXT_PUBLIC_ var (visible in the browser bundle),
+// which is fine for a single-user tool on your own LAN/VPN per the README's security
+// notes — it's not a substitute for real auth if you ever expose this beyond that.
+export const N8N_WEBHOOK_SECRET = process.env.NEXT_PUBLIC_N8N_WEBHOOK_SECRET!;

@@ -1,0 +1,1556 @@
+{
+  "updatedAt": "2026-07-22T21:56:30.071Z",
+  "createdAt": "2026-07-21T23:49:42.856Z",
+  "id": "DacA7DQAbAwyE1jX",
+  "name": "Resell Ledger AI Research & Listing Automation",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "resell-research",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "74db538c-c50f-4a23-ae78-88baf98315b8",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "b7a6d94f-8dcf-40e5-b1e2-6f10d009c882",
+      "notes": "Entry point. App POSTs {item_id, photo_url, name, seller_condition, missing_items, seller_notes} here."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b2caa496-a995-498b-8578-adb23aaf2f54",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.WEBHOOK_SECRET }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "039b4568-56f5-4bed-959a-03751b5e3088",
+      "name": "Verify Webhook Secret",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        0
+      ],
+      "notes": "Rejects requests whose x-webhook-secret header does not match WEBHOOK_SECRET."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"error\": \"Unauthorized\", \"message\": \"Invalid or missing x-webhook-secret header\" } }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "bad5de7b-a004-450d-a2d6-ab3fc296a606",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        448,
+        192
+      ],
+      "notes": "Returns HTTP 401 immediately when the webhook secret does not match. Dead end."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "95f7df75-13f9-4de9-91e7-c0621c399b42",
+              "name": "item_id",
+              "type": "string",
+              "value": "={{ $json.body.item_id }}"
+            },
+            {
+              "id": "98dbebcf-2c85-49d2-bab6-176ea2b09ced",
+              "name": "photo_url",
+              "type": "string",
+              "value": "={{ $json.body.photo_url }}"
+            },
+            {
+              "id": "8828e9f3-0cc3-4dae-992d-45c22886e397",
+              "name": "seller_name",
+              "type": "string",
+              "value": "={{ $json.body.name ?? '' }}"
+            },
+            {
+              "id": "82430215-1bf4-4144-a2c0-49dc31e0bbb8",
+              "name": "seller_condition",
+              "type": "string",
+              "value": "={{ $json.body.seller_condition ?? 'Unknown' }}"
+            },
+            {
+              "id": "887373d9-6a7e-4ba0-b19e-2c51f009e91e",
+              "name": "missing_items",
+              "type": "string",
+              "value": "={{ $json.body.missing_items ?? 'None noted' }}"
+            },
+            {
+              "id": "9dc96b13-8111-47e8-9334-b286e6f4f02c",
+              "name": "seller_notes",
+              "type": "string",
+              "value": "={{ $json.body.seller_notes ?? '' }}"
+            },
+            {
+              "id": "9821ee83-13fc-49b9-85e2-3e95c0ac8087",
+              "name": "workflow_start",
+              "type": "string",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b992fd4d-d2d3-49b7-9a90-ea42c0941f0a",
+      "name": "Set Variables",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        0
+      ],
+      "notes": "Normalizes incoming webhook fields into clean, null-safe variables for the rest of the workflow."
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/listings?id=eq.{{ $('Set Variables').item.json.item_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ ai_status: \"processing\", processing_started_at: $('Set Variables').item.json.workflow_start }) }}",
+        "options": {}
+      },
+      "id": "c2fce538-e661-4f8d-b770-96c8f9f7d4e4",
+      "name": "Mark Processing in Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        0
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "Flips the listing row to ai_status=processing so the app UI shows a spinner."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"received\", \"item_id\": $('Set Variables').item.json.item_id, \"message\": \"Research pipeline started\" } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "5fb2819e-edd8-4a44-8ebf-d16a5357add7",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        880,
+        0
+      ],
+      "notes": "Responds to the app within ~1-2s so it never times out. Everything after this runs async."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env['AI_API_BASE_URL_' + $env.AI_PROVIDER] }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env['AI_API_KEY_' + $env.AI_PROVIDER] }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: $env['AI_MODEL_VISION_' + $env.AI_PROVIDER],\n  max_tokens: 3000,\n  temperature: 0.1,\n  messages: [\n    {\n      role: \"system\",\n      content: \"You are an expert product identification specialist with encyclopedic knowledge of consumer electronics, appliances, collectibles, toys, tools, clothing, furniture, sporting goods, musical instruments, and all major resale categories. Your sole purpose is to precisely identify items from photos so they can be listed on eBay and Facebook Marketplace. Accuracy is paramount — if you are unsure, say so and give your best assessment. Always respond in raw, valid JSON only. No markdown, no prose, no code fences.\"\n    },\n    {\n      role: \"user\",\n      content: [\n        {\n          type: \"image_url\",\n          image_url: {\n            url: $('Set Variables').item.json.photo_url\n          }\n        },\n        {\n          type: \"text\",\n          text: `Analyze this image and identify the product as precisely as possible.\n\nSeller-provided context (may help or may be wrong — use your visual analysis as primary source):\n- Seller's name for item: ${$('Set Variables').item.json.seller_name || 'Not provided'}\n- Condition stated by seller: ${$('Set Variables').item.json.seller_condition}\n- Missing items noted: ${$('Set Variables').item.json.missing_items}\n- Seller notes: ${$('Set Variables').item.json.seller_notes || 'None'}\n\nReturn ONLY this exact JSON structure — no extra fields, no wrapping:\n{\n  \"identified_product_name\": \"Full descriptive product name (e.g. Sony PlayStation 4 Pro 1TB Gaming Console)\",\n  \"brand\": \"Brand name or Unknown\",\n  \"model\": \"Model name (e.g. PS4 Pro) or Unknown\",\n  \"model_number\": \"Specific model/part number if visible (e.g. CUH-7215B) or Unknown\",\n  \"category\": \"Primary resale category (Electronics | Toys & Games | Clothing | Tools | Furniture | Collectibles | Sports | Music | Other)\",\n  \"subcategory\": \"More specific subcategory (e.g. Gaming Console, Action Figure, Power Tool)\",\n  \"color\": \"Primary color(s) of this item\",\n  \"visible_condition_notes\": \"What you can objectively observe about condition from the image (scratches, wear, damage, cleanliness)\",\n  \"identifying_features\": [\"list of key visual features that confirm identification\"],\n  \"approximate_era\": \"Decade or year range if determinable (e.g. 1990s, 2015-2018) or null\",\n  \"search_query_primary\": \"Best web search query to find this exact product (brand + model/number, 3-6 words)\",\n  \"search_query_alt\": \"Alternative query if primary is too specific or if brand is unknown\",\n  \"search_query_ebay\": \"Search query optimized for finding this on eBay sold listings\",\n  \"confidence\": \"high | medium | low\",\n  \"confidence_reason\": \"One sentence explaining your confidence level\"\n}`\n        }\n      ]\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "5423f930-817f-4757-b371-65fab85260e3",
+      "name": "AI: Image Recognition",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1104,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000,
+      "onError": "continueErrorOutput",
+      "notes": "Vision model identifies brand/model/category from the item photo. Must use AI_MODEL_VISION."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw = $input.item.json.choices[0].message.content;\nconst cleaned = raw.replace(/```json|```/g, '').trim();\ntry {\n  return { json: JSON.parse(cleaned) };\n} catch(e) {\n  return { json: {\n    identified_product_name: \"Unknown Product\",\n    brand: \"Unknown\", model: \"Unknown\", model_number: \"Unknown\",\n    category: \"Other\", subcategory: \"Unknown\",\n    color: \"Unknown\", visible_condition_notes: \"Unable to parse AI response\",\n    identifying_features: [], search_query_primary: \"item for sale\",\n    search_query_alt: \"used item\", search_query_ebay: \"used item\",\n    confidence: \"low\", confidence_reason: \"AI response parse failed: \" + e.message\n  }};\n}"
+      },
+      "id": "b2d9b6ef-901a-4251-b0d8-aae47b21e750",
+      "name": "Parse Image Recognition",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        0
+      ],
+      "notes": "Strips code fences and safely parses the vision model's JSON response, with a fallback on parse failure."
+    },
+    {
+      "parameters": {
+        "url": "https://api.search.brave.com/res/v1/web/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $('Parse Image Recognition').item.json.search_query_primary }}"
+            },
+            {
+              "name": "count",
+              "value": "8"
+            },
+            {
+              "name": "search_lang",
+              "value": "en"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Subscription-Token",
+              "value": "={{ $env.BRAVE_API_KEY }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7eab15c3-a417-4f85-a34e-7fc332dd6f96",
+      "name": "Brave Search 1: Product Identification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1552,
+        0
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "Web search to corroborate/refine the vision model's product identification."
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "id": "b5109dff-ffdd-45a0-90b7-d804ecc35502",
+      "name": "Wait 1s (1)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1760,
+        0
+      ],
+      "webhookId": "ed0632e9-908b-4737-bd90-bbeed30a8d33",
+      "notes": "Respects Brave Search free-tier rate limit of 1 req/sec."
+    },
+    {
+      "parameters": {
+        "url": "https://api.search.brave.com/res/v1/web/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $('Parse Image Recognition').item.json.brand }} {{ $('Parse Image Recognition').item.json.model }} specifications dimensions weight features full specs"
+            },
+            {
+              "name": "count",
+              "value": "8"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Subscription-Token",
+              "value": "={{ $env.BRAVE_API_KEY }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e8242525-5707-4984-bfd5-cda26da23e0c",
+      "name": "Brave Search 2: Specifications",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1984,
+        0
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "Web search for detailed specs, dimensions and features."
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "id": "ce20b552-bb06-4cd2-8948-49d5f6e4213b",
+      "name": "Wait 1s (2)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2208,
+        0
+      ],
+      "webhookId": "73c39586-3adf-48ce-abb3-4b27bc02ba9d",
+      "notes": "Respects Brave Search free-tier rate limit of 1 req/sec."
+    },
+    {
+      "parameters": {
+        "url": "https://api.search.brave.com/res/v1/web/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $('Parse Image Recognition').item.json.identified_product_name }} retail price MSRP new buy 2024"
+            },
+            {
+              "name": "count",
+              "value": "6"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Subscription-Token",
+              "value": "={{ $env.BRAVE_API_KEY }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dc96a497-c1bf-495e-b7a7-14bcf195a087",
+      "name": "Brave Search 3: Retail Price",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2432,
+        0
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "Web search for original/current retail price (MSRP)."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env['AI_API_BASE_URL_' + $env.AI_PROVIDER] }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env['AI_API_KEY_' + $env.AI_PROVIDER] }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: $env['AI_MODEL_RESEARCH_' + $env.AI_PROVIDER],\n  max_tokens: 4000,\n  temperature: 0.2,\n  messages: [\n    {\n      role: \"system\",\n      content: \"You are a professional product researcher specializing in the secondhand and resale market. You create comprehensive, accurate product profiles from image analysis and web search results. Your profiles are used directly to create eBay and Facebook Marketplace listings — accuracy and completeness are critical. Always respond in raw, valid JSON only. No markdown, no prose, no code fences.\"\n    },\n    {\n      role: \"user\",\n      content: `Synthesize the following data into a comprehensive product profile.\n\nIMAGE ANALYSIS RESULT:\n${JSON.stringify($('Parse Image Recognition').item.json)}\n\nSELLER INFO:\n- Seller's name for item: ${$('Set Variables').item.json.seller_name || 'Not provided'}\n- Condition: ${$('Set Variables').item.json.seller_condition}\n- Missing items: ${$('Set Variables').item.json.missing_items}\n- Notes: ${$('Set Variables').item.json.seller_notes || 'None'}\n\nWEB SEARCH RESULTS — Product Identification:\n${$('Brave Search 1: Product Identification').item.json.web?.results?.slice(0,5).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nWEB SEARCH RESULTS — Specifications:\n${$('Brave Search 2: Specifications').item.json.web?.results?.slice(0,5).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nWEB SEARCH RESULTS — Retail Price:\n${$('Brave Search 3: Retail Price').item.json.web?.results?.slice(0,5).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nReturn ONLY this exact JSON:\n{\n  \"confirmed_product_name\": \"Full verified product name\",\n  \"brand\": \"Brand name\",\n  \"model\": \"Model name\",\n  \"model_number\": \"Model/part number or null\",\n  \"upc\": \"UPC if found or null\",\n  \"asin\": \"Amazon ASIN if found or null\",\n  \"category\": \"Primary category\",\n  \"subcategory\": \"Subcategory\",\n  \"year_released\": \"Year or year range or null\",\n  \"country_of_origin\": \"Country or null\",\n  \"item_color\": \"The specific color of this particular item\",\n  \"colors_available\": [\"all colors this model came in\"],\n  \"dimensions\": {\n    \"length\": \"value or null\",\n    \"width\": \"value or null\",\n    \"height\": \"value or null\",\n    \"weight\": \"value or null\",\n    \"unit\": \"inches/lbs or cm/kg\"\n  },\n  \"key_features\": [\"feature 1\", \"feature 2\", \"up to 10 key features\"],\n  \"materials\": [\"primary materials\"],\n  \"whats_in_box_new\": [\"what comes in box when purchased new\"],\n  \"whats_included_this_item\": [\"what appears to be included with this specific item based on seller notes and condition\"],\n  \"condition_full_description\": \"Detailed, honest condition description incorporating seller_condition level, missing_items, visible_condition_notes, and seller_notes. Written in professional listing language.\",\n  \"ebay_item_specifics\": {\n    \"Brand\": \"\",\n    \"Model\": \"\",\n    \"MPN\": \"or Does Not Apply\",\n    \"Type\": \"\",\n    \"Color\": \"\",\n    \"Unit Type\": \"or N/A\",\n    \"Country/Region of Manufacture\": \"or Unknown\"\n  },\n  \"short_description\": \"2-3 sentence product description for listings\",\n  \"retail_price_usd\": \"number or null — original MSRP from research\",\n  \"current_new_price_usd\": \"number or null — what it costs new today\"\n}`\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "5e7a5a82-aa93-4455-85f4-165b5fd96e07",
+      "name": "AI: Product Research Synthesis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2640,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000,
+      "onError": "continueErrorOutput",
+      "notes": "Synthesizes image analysis + web search results into a full product profile. Uses AI_MODEL_RESEARCH."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw = $input.item.json.choices[0].message.content;\nconst cleaned = raw.replace(/```json|```/g, '').trim();\ntry {\n  return { json: JSON.parse(cleaned) };\n} catch(e) {\n  return { json: {\n    confirmed_product_name: $('Parse Image Recognition').item.json.identified_product_name,\n    brand: $('Parse Image Recognition').item.json.brand,\n    model: $('Parse Image Recognition').item.json.model,\n    model_number: $('Parse Image Recognition').item.json.model_number,\n    upc: null, asin: null,\n    category: $('Parse Image Recognition').item.json.category,\n    subcategory: $('Parse Image Recognition').item.json.subcategory,\n    year_released: null, country_of_origin: null,\n    item_color: $('Parse Image Recognition').item.json.color,\n    colors_available: [],\n    dimensions: { length: null, width: null, height: null, weight: null, unit: null },\n    key_features: $('Parse Image Recognition').item.json.identifying_features || [],\n    materials: [], whats_in_box_new: [], whats_included_this_item: [],\n    condition_full_description: $('Parse Image Recognition').item.json.visible_condition_notes || \"Condition unknown\",\n    ebay_item_specifics: { Brand: $('Parse Image Recognition').item.json.brand, Model: $('Parse Image Recognition').item.json.model, MPN: \"Does Not Apply\", Type: \"\", Color: $('Parse Image Recognition').item.json.color, \"Unit Type\": \"N/A\", \"Country/Region of Manufacture\": \"Unknown\" },\n    short_description: \"Details unavailable — AI response parse failed: \" + e.message,\n    retail_price_usd: null, current_new_price_usd: null\n  }};\n}"
+      },
+      "id": "30675182-562e-4d55-a5be-e9ac9cf7fd9b",
+      "name": "Parse Product Research",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2864,
+        0
+      ],
+      "notes": "Safely parses the product research JSON, falling back to the image-recognition data on parse failure."
+    },
+    {
+      "parameters": {
+        "url": "https://api.search.brave.com/res/v1/web/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $('Parse Product Research').item.json.confirmed_product_name }} sold price {{ $('Set Variables').item.json.seller_condition }} ebay completed listings"
+            },
+            {
+              "name": "count",
+              "value": "8"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Subscription-Token",
+              "value": "={{ $env.BRAVE_API_KEY }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f4a82374-1952-4002-a80d-1b9a64936370",
+      "name": "Brave Search 4: eBay Sold Prices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3088,
+        0
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "Web search for eBay sold/completed listing prices at this condition tier."
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "id": "bca98f73-0565-4cc3-b7bd-0699f690ef83",
+      "name": "Wait 1s (3)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3312,
+        0
+      ],
+      "webhookId": "b8087bae-6859-4628-81c5-747cf04a73fa",
+      "notes": "Respects Brave Search free-tier rate limit of 1 req/sec."
+    },
+    {
+      "parameters": {
+        "url": "https://api.search.brave.com/res/v1/web/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $('Parse Product Research').item.json.confirmed_product_name }} used price {{ $('Set Variables').item.json.seller_condition }} facebook marketplace craigslist offerup 2024 2025"
+            },
+            {
+              "name": "count",
+              "value": "8"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Subscription-Token",
+              "value": "={{ $env.BRAVE_API_KEY }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e1f553b2-679a-4b9e-8a48-2b968dd4c2fb",
+      "name": "Brave Search 5: Used Market Prices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3520,
+        0
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "Web search for used market pricing across FB Marketplace, Craigslist, OfferUp."
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "id": "e460f42e-3433-4d90-8950-f643f348cced",
+      "name": "Wait 1s (4)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3744,
+        0
+      ],
+      "webhookId": "600333f0-a1ce-4066-bc3c-f43649ad4219",
+      "notes": "Respects Brave Search free-tier rate limit of 1 req/sec."
+    },
+    {
+      "parameters": {
+        "url": "https://api.search.brave.com/res/v1/web/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $('Parse Product Research').item.json.confirmed_product_name }} resale value price guide {{ $('Set Variables').item.json.seller_condition }} worth"
+            },
+            {
+              "name": "count",
+              "value": "6"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Subscription-Token",
+              "value": "={{ $env.BRAVE_API_KEY }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2030a870-470b-4533-b20b-be455d70929d",
+      "name": "Brave Search 6: Price Guide / Resale Value",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3968,
+        0
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "Web search for resale price guides / worth estimates."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ebay.com/identity/v1/oauth2/token",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Basic {{ Buffer.from($env.EBAY_CLIENT_ID + ':' + $env.EBAY_CLIENT_SECRET).toString('base64') }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "client_credentials"
+            },
+            {
+              "name": "scope",
+              "value": "https://api.ebay.com/oauth/api_scope"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "36efdca8-4a37-4195-b46f-e2084c7f844c",
+      "name": "eBay: Get OAuth Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4192,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Fetches an eBay OAuth token via client_credentials. NOT wired to the global error handler — if eBay API access isn't approved yet, this node fails softly (onError=continueRegularOutput) and the pipeline proceeds using Brave Search data only."
+    },
+    {
+      "parameters": {
+        "url": "https://api.ebay.com/buy/browse/v1/item_summary/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $('Parse Product Research').item.json.confirmed_product_name }}"
+            },
+            {
+              "name": "filter",
+              "value": "conditionIds:{3000|2500|2000|1500|7000}"
+            },
+            {
+              "name": "sort",
+              "value": "-price"
+            },
+            {
+              "name": "limit",
+              "value": "10"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('eBay: Get OAuth Token').item.json.access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "63ab8b62-f123-43d1-8b0c-4c37a9241206",
+      "name": "eBay: Browse API Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4400,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Live eBay listing search for pricing comps. Soft-fails (onError=continueRegularOutput) on missing token/API access so downstream valuation just treats itemSummaries as unavailable."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env['AI_API_BASE_URL_' + $env.AI_PROVIDER] }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env['AI_API_KEY_' + $env.AI_PROVIDER] }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: $env['AI_MODEL_VALUATION_' + $env.AI_PROVIDER],\n  max_tokens: 3500,\n  temperature: 0.1,\n  messages: [\n    {\n      role: \"system\",\n      content: \"You are a professional resale market analyst with deep expertise in pricing secondhand items across eBay, Facebook Marketplace, Craigslist, OfferUp, and other platforms. You analyze real market data to provide precise, realistic valuations and actionable pricing strategies. Your recommendations directly impact a seller's income — be accurate and conservative. Never guess; use the data provided. Always respond in raw, valid JSON only.\"\n    },\n    {\n      role: \"user\",\n      content: `Analyze the following data and provide a complete valuation for this resale item.\n\nPRODUCT PROFILE:\n${JSON.stringify($('Parse Product Research').item.json)}\n\nSELLER CONDITION: ${$('Set Variables').item.json.seller_condition}\nMISSING ITEMS: ${$('Set Variables').item.json.missing_items}\n\nMARKET RESEARCH — eBay Sold/Active (web):\n${$('Brave Search 4: eBay Sold Prices').item.json.web?.results?.slice(0,6).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nMARKET RESEARCH — Used Market (FB, Craigslist, OfferUp):\n${$('Brave Search 5: Used Market Prices').item.json.web?.results?.slice(0,6).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nMARKET RESEARCH — Price Guides:\n${$('Brave Search 6: Price Guide / Resale Value').item.json.web?.results?.slice(0,4).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nEBAY API LIVE DATA:\n${$('eBay: Browse API Search').item.json.itemSummaries?.slice(0,10).map(i => '• ' + i.title + ' — $' + i.price?.value + ' — ' + i.condition).join('\\n') ?? 'eBay API not available'}\n\nRETAIL PRICE FROM RESEARCH: $${$('Parse Product Research').item.json.retail_price_usd ?? 'Unknown'}\nCURRENT NEW PRICE: $${$('Parse Product Research').item.json.current_new_price_usd ?? 'Unknown'}\n\nReturn ONLY this exact JSON:\n{\n  \"original_retail_price_usd\": \"number or null\",\n  \"current_new_price_usd\": \"number or null\",\n  \"market_value_used_usd\": \"number — fair used market value for THIS condition\",\n  \"ebay_sold_price_avg_usd\": \"number or null — average of recent eBay sold prices for similar condition\",\n  \"ebay_active_price_avg_usd\": \"number or null — average of current eBay active listings\",\n  \"facebook_marketplace_avg_usd\": \"number or null\",\n  \"price_sell_fast_usd\": \"number — price to sell within 1-3 days (aggressive but not giving it away)\",\n  \"price_maximize_profit_usd\": \"number — highest realistic price; may take 2-4 weeks\",\n  \"recommended_price_usd\": \"number — your recommended sweet spot (sells within ~1 week)\",\n  \"price_range_low_usd\": \"number — absolute floor (still fair)\",\n  \"price_range_high_usd\": \"number — ceiling (optimistic but not unrealistic)\",\n  \"condition_impact\": \"How the seller condition and missing items affect value versus a complete Like New example. 1-2 sentences.\",\n  \"pricing_rationale\": \"2-3 sentences explaining the recommended price and the market factors driving it.\",\n  \"sell_fast_strategy\": \"1-2 sentences: how to price and present this item to sell within 2-3 days.\",\n  \"maximize_profit_strategy\": \"1-2 sentences: how to hold out for maximum value (timing, platform, framing).\",\n  \"best_platform_to_sell\": \"eBay | Facebook Marketplace | Both | OfferUp | Other\",\n  \"best_platform_reason\": \"Why this platform maximizes value or speed for this specific item.\",\n  \"data_confidence\": \"high | medium | low\",\n  \"data_confidence_reason\": \"One sentence explaining confidence in the valuation data.\"\n}`\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "d9038426-321c-4fb4-9c58-feb3832dbcb9",
+      "name": "AI: Valuation Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4624,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000,
+      "onError": "continueErrorOutput",
+      "notes": "Turns market research + eBay comps into concrete pricing recommendations. Uses AI_MODEL_VALUATION."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw = $input.item.json.choices[0].message.content;\nconst cleaned = raw.replace(/```json|```/g, '').trim();\ntry {\n  return { json: JSON.parse(cleaned) };\n} catch(e) {\n  return { json: {\n    original_retail_price_usd: $('Parse Product Research').item.json.retail_price_usd ?? null,\n    current_new_price_usd: $('Parse Product Research').item.json.current_new_price_usd ?? null,\n    market_value_used_usd: null, ebay_sold_price_avg_usd: null, ebay_active_price_avg_usd: null,\n    facebook_marketplace_avg_usd: null, price_sell_fast_usd: null, price_maximize_profit_usd: null,\n    recommended_price_usd: null, price_range_low_usd: null, price_range_high_usd: null,\n    condition_impact: \"Unavailable — AI response parse failed: \" + e.message,\n    pricing_rationale: \"Unavailable — valuation parse failed.\",\n    sell_fast_strategy: \"\", maximize_profit_strategy: \"\",\n    best_platform_to_sell: \"Both\", best_platform_reason: \"\",\n    data_confidence: \"low\", data_confidence_reason: \"AI response parse failed: \" + e.message\n  }};\n}"
+      },
+      "id": "95e3633a-e4ed-43b1-9f48-4e59905654a6",
+      "name": "Parse Valuation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4848,
+        0
+      ],
+      "notes": "Safely parses the valuation JSON, with a null-safe fallback on parse failure."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env['AI_API_BASE_URL_' + $env.AI_PROVIDER] }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env['AI_API_KEY_' + $env.AI_PROVIDER] }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: $env['AI_MODEL_WRITER_' + $env.AI_PROVIDER],\n  max_tokens: 5000,\n  temperature: 0.3,\n  messages: [\n    {\n      role: \"system\",\n      content: \"You are an expert eBay seller and listing copywriter with over 10,000 successful listings. You know eBay's best practices, Cassini search algorithm optimization, and how to write listings that convert browsers into buyers. You follow eBay's listing standards exactly. Always respond in raw, valid JSON only.\"\n    },\n    {\n      role: \"user\",\n      content: `Create a complete, optimized eBay listing for the following item.\n\nPRODUCT PROFILE:\n${JSON.stringify($('Parse Product Research').item.json)}\n\nVALUATION DATA:\n${JSON.stringify($('Parse Valuation').item.json)}\n\nSELLER-PROVIDED DETAILS:\n- Stated Condition: ${$('Set Variables').item.json.seller_condition}\n- Missing Items: ${$('Set Variables').item.json.missing_items}\n- Seller Notes: ${$('Set Variables').item.json.seller_notes || 'None'}\n\nEBAY LISTING REQUIREMENTS & STANDARDS:\n\nTITLE (Max 80 characters):\n- Include: Brand, Model/Model Number, key descriptor, condition signal if space allows\n- Optimize for eBay Cassini search (most-searched terms first)\n- No symbols like !, $, @, all-caps words\n- Example format: 'Sony PlayStation 4 Pro 1TB Gaming Console CUH-7215B Good'\n\nSUBTITLE (Max 55 characters, optional but recommended):\n- Add detail that didn't fit in title\n- Highlight best feature or bundle detail\n\nCONDITION MAPPING (use exact eBay tier names):\n- Seller 'New'       → eBay 'New'\n- Seller 'Like New'  → eBay 'Like New'\n- Seller 'Good'      → eBay 'Good'\n- Seller 'Fair'      → eBay 'Acceptable'\n- Seller 'Poor'      → eBay 'For Parts or Not Working'\n\nCONDITION DESCRIPTION (Max 1000 characters):\n- Must be honest and specific about actual state\n- Mention all defects, wear, missing items\n- Include what IS included\n- Avoid vague terms like 'shows normal wear'\n\nDESCRIPTION (Full HTML, use eBay-compatible HTML only):\n- Use: <b>, <br>, <ul>, <li>, <p>, <hr>\n- Do NOT use: CSS, <style>, <script>, <img>, <table> with complex nesting\n- Structure:\n  1. Opening hook paragraph (what it is and why it's a good deal)\n  2. <b>Item Details</b> section with key specs as <ul><li>\n  3. <b>Condition Details</b> section — honest, specific\n  4. <b>What's Included</b> section\n  5. <b>Shipping</b> placeholder: '[SELLER: Add your shipping details here]'\n  6. <b>Returns</b> placeholder: '[SELLER: Add your return policy here]'\n  7. Closing line encouraging questions\n\nITEM SPECIFICS:\n- Fill all standard eBay item specifics for this category\n- Include: Brand, Model, MPN, Type, Color, Size (if applicable), Material (if applicable), Country/Region of Manufacture, UPC (if known)\n- Use 'Does Not Apply' for non-applicable fields, never leave blank\n\nPRICING:\n- Buy It Now price: use recommended_price_usd from valuation\n- Auction start price: 65-70% of recommended_price_usd\n- Best Offer: suggest enabling Best Offer if item value > $25\n\nReturn ONLY this exact JSON:\n{\n  \"ebay_title\": \"Max 80 char optimized title\",\n  \"ebay_subtitle\": \"Max 55 char subtitle or null\",\n  \"ebay_condition_tier\": \"Exact eBay condition tier name\",\n  \"ebay_condition_description\": \"Detailed honest condition description up to 1000 chars\",\n  \"ebay_description_html\": \"Full HTML description body\",\n  \"ebay_item_specifics\": { \"Brand\": \"\", \"Model\": \"\", \"MPN\": \"\", \"etc\": \"\" },\n  \"ebay_category_suggestion\": \"Suggested eBay category path\",\n  \"ebay_buy_it_now_price\": \"number\",\n  \"ebay_auction_start_price\": \"number\",\n  \"ebay_best_offer_enabled\": true,\n  \"ebay_keywords_used\": [\"keywords in the title for reference\"],\n  \"ebay_seller_tips\": [\"2-3 actionable tips specific to selling this item type on eBay\"]\n}`\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "3da8c058-1ce3-472e-a182-7cd16c58bda7",
+      "name": "AI: eBay Listing Builder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5072,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000,
+      "onError": "continueErrorOutput",
+      "notes": "Writes the eBay-standard title/description/item specifics/pricing. Uses AI_MODEL_WRITER."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw = $input.item.json.choices[0].message.content;\nconst cleaned = raw.replace(/```json|```/g, '').trim();\ntry {\n  return { json: JSON.parse(cleaned) };\n} catch(e) {\n  return { json: {\n    ebay_title: ($('Parse Product Research').item.json.confirmed_product_name || 'Item For Sale').slice(0, 80),\n    ebay_subtitle: null,\n    ebay_condition_tier: $('Set Variables').item.json.seller_condition,\n    ebay_condition_description: $('Parse Product Research').item.json.condition_full_description || \"See photos for condition.\",\n    ebay_description_html: \"<p>\" + ($('Parse Product Research').item.json.short_description || \"Details unavailable.\") + \"</p>\",\n    ebay_item_specifics: $('Parse Product Research').item.json.ebay_item_specifics || {},\n    ebay_category_suggestion: $('Parse Product Research').item.json.category || \"Other\",\n    ebay_buy_it_now_price: $('Parse Valuation').item.json.recommended_price_usd ?? null,\n    ebay_auction_start_price: $('Parse Valuation').item.json.price_range_low_usd ?? null,\n    ebay_best_offer_enabled: true,\n    ebay_keywords_used: [],\n    ebay_seller_tips: [\"AI listing generation failed to parse: \" + e.message]\n  }};\n}"
+      },
+      "id": "5cfb5f75-b985-424f-a04d-28e2e04be981",
+      "name": "Parse eBay Listing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5280,
+        0
+      ],
+      "notes": "Safely parses the eBay listing JSON, with a conservative fallback listing on parse failure."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env['AI_API_BASE_URL_' + $env.AI_PROVIDER] }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env['AI_API_KEY_' + $env.AI_PROVIDER] }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: $env['AI_MODEL_WRITER_' + $env.AI_PROVIDER],\n  max_tokens: 3000,\n  temperature: 0.4,\n  messages: [\n    {\n      role: \"system\",\n      content: \"You are an expert at writing Facebook Marketplace listings that generate fast responses and serious buyers. You know that FB Marketplace shoppers are local, value-focused, and scan quickly — they want to know what it is, what shape it's in, and what you want for it. Your listings are honest, conversational, and highlight value without being salesy. Always respond in raw, valid JSON only.\"\n    },\n    {\n      role: \"user\",\n      content: `Create a complete Facebook Marketplace listing for this item.\n\nPRODUCT PROFILE:\n${JSON.stringify($('Parse Product Research').item.json)}\n\nVALUATION DATA:\n${JSON.stringify($('Parse Valuation').item.json)}\n\nSELLER-PROVIDED DETAILS:\n- Stated Condition: ${$('Set Variables').item.json.seller_condition}\n- Missing Items: ${$('Set Variables').item.json.missing_items}\n- Seller Notes: ${$('Set Variables').item.json.seller_notes || 'None'}\n\nFACEBOOK MARKETPLACE REQUIREMENTS & STANDARDS:\n\nTITLE (Max 100 characters):\n- Clear and descriptive — what it is, brand and model\n- Local buyer friendly — no jargon, no eBay-style keyword stuffing\n- Examples: 'Sony PS4 Pro 1TB — Good Condition, No Remote', 'KitchenAid Stand Mixer — Like New'\n\nPRICE:\n- Use price_sell_fast_usd — FB Marketplace buyers expect to negotiate, so this is your starting ask\n- Note: list the price_sell_fast_usd as the asking price\n\nDESCRIPTION (Plain text only — NO HTML):\n- Conversational and friendly, not corporate\n- Be upfront about condition and missing items (builds trust, reduces ghosting)\n- Structure:\n  1. What it is (1 sentence — assume they didn't read the title)\n  2. Condition details (honest, matter-of-fact)\n  3. What's included / what's missing (be specific)\n  4. Why it's priced the way it is (optional, 1 sentence — e.g. 'priced to move')\n  5. 'DM me with any questions!' closing\n- Tone: friendly neighbor selling stuff, not a storefront\n- Length: 100-300 words. Buyers on mobile skim — don't write a novel.\n\nHASHTAGS: 5-8 relevant hashtags (FB Marketplace supports them, buyers sometimes search)\n\nCATEGORY: Suggest the correct Facebook Marketplace category\n\nReturn ONLY this exact JSON:\n{\n  \"fb_title\": \"Max 100 char title\",\n  \"fb_price\": \"number (the asking price)\",\n  \"fb_description\": \"Full plain text Facebook Marketplace post\",\n  \"fb_category\": \"Facebook Marketplace category name\",\n  \"fb_hashtags\": [\"#tag1\", \"#tag2\", \"#tag3\"],\n  \"fb_seller_tips\": [\"2-3 actionable tips for selling this item on Facebook Marketplace\"]\n}`\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "5ceb1083-8545-458b-882d-1852809c3105",
+      "name": "AI: Facebook Marketplace Post Builder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5504,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000,
+      "onError": "continueErrorOutput",
+      "notes": "Writes the casual, conversion-optimized Facebook Marketplace post. Uses AI_MODEL_WRITER."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw = $input.item.json.choices[0].message.content;\nconst cleaned = raw.replace(/```json|```/g, '').trim();\ntry {\n  return { json: JSON.parse(cleaned) };\n} catch(e) {\n  return { json: {\n    fb_title: ($('Parse Product Research').item.json.confirmed_product_name || 'Item For Sale').slice(0, 100),\n    fb_price: $('Parse Valuation').item.json.price_sell_fast_usd ?? null,\n    fb_description: $('Parse Product Research').item.json.short_description || \"Details unavailable. DM me with any questions!\",\n    fb_category: $('Parse Product Research').item.json.category || \"Other\",\n    fb_hashtags: [],\n    fb_seller_tips: [\"AI post generation failed to parse: \" + e.message]\n  }};\n}"
+      },
+      "id": "762d7d46-e770-40e6-ae8c-8ec9d87c54b6",
+      "name": "Parse Facebook Post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5728,
+        0
+      ],
+      "notes": "Safely parses the Facebook Marketplace post JSON, with a fallback post on parse failure."
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/listings?id=eq.{{ $('Set Variables').item.json.item_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  ai_status: \"complete\",\n  processing_completed_at: new Date().toISOString(),\n\n  identified_product_name: $('Parse Product Research').item.json.confirmed_product_name,\n  brand: $('Parse Product Research').item.json.brand,\n  model: $('Parse Product Research').item.json.model,\n  model_number: $('Parse Product Research').item.json.model_number,\n  category: $('Parse Product Research').item.json.category,\n  subcategory: $('Parse Product Research').item.json.subcategory,\n  item_color: $('Parse Product Research').item.json.item_color,\n  dimensions: $('Parse Product Research').item.json.dimensions,\n  key_features: $('Parse Product Research').item.json.key_features,\n  condition_description: $('Parse Product Research').item.json.condition_full_description,\n  whats_included: $('Parse Product Research').item.json.whats_included_this_item,\n\n  original_retail_price: $('Parse Valuation').item.json.original_retail_price_usd,\n  current_new_price: $('Parse Valuation').item.json.current_new_price_usd,\n  market_value: $('Parse Valuation').item.json.market_value_used_usd,\n  price_sell_fast: $('Parse Valuation').item.json.price_sell_fast_usd,\n  price_maximize_profit: $('Parse Valuation').item.json.price_maximize_profit_usd,\n  recommended_price: $('Parse Valuation').item.json.recommended_price_usd,\n  price_range_low: $('Parse Valuation').item.json.price_range_low_usd,\n  price_range_high: $('Parse Valuation').item.json.price_range_high_usd,\n  pricing_rationale: $('Parse Valuation').item.json.pricing_rationale,\n  best_platform: $('Parse Valuation').item.json.best_platform_to_sell,\n\n  ebay_title: $('Parse eBay Listing').item.json.ebay_title,\n  ebay_subtitle: $('Parse eBay Listing').item.json.ebay_subtitle,\n  ebay_condition_tier: $('Parse eBay Listing').item.json.ebay_condition_tier,\n  ebay_condition_description: $('Parse eBay Listing').item.json.ebay_condition_description,\n  ebay_description: $('Parse eBay Listing').item.json.ebay_description_html,\n  ebay_item_specifics: $('Parse eBay Listing').item.json.ebay_item_specifics,\n  ebay_buy_it_now_price: $('Parse eBay Listing').item.json.ebay_buy_it_now_price,\n  ebay_auction_start_price: $('Parse eBay Listing').item.json.ebay_auction_start_price,\n\n  fb_title: $('Parse Facebook Post').item.json.fb_title,\n  fb_price: $('Parse Facebook Post').item.json.fb_price,\n  fb_description: $('Parse Facebook Post').item.json.fb_description,\n  fb_category: $('Parse Facebook Post').item.json.fb_category,\n  fb_hashtags: $('Parse Facebook Post').item.json.fb_hashtags\n}) }}",
+        "options": {}
+      },
+      "id": "f1962983-0cd6-4014-b334-e0113276b96d",
+      "name": "Save All Results to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5952,
+        0
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "Writes every AI result to the listings row and flips ai_status=complete, which fires Supabase Realtime to the app. Column names are suggestions — adjust to match your actual schema."
+    },
+    {
+      "parameters": {},
+      "id": "6ca2ed64-657a-418d-97ea-ec498c1e3a3d",
+      "name": "Workflow Complete",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        6160,
+        0
+      ],
+      "notes": "End of the happy path. The app's Supabase Realtime subscription picks up ai_status=complete."
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/listings?id=eq.{{ $('Set Variables').item.json.item_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ ai_status: \"failed\", error_step: $prevNode.name, error_message: ($json.error && $json.error.message) ? $json.error.message : ($json.message ?? \"Workflow step failed\"), processing_completed_at: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "abef3e74-66a1-4559-8a56-5e3692fdfd1c",
+      "name": "Mark Failed in Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3088,
+        432
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Shared error handler. Every ⚠️ node's error output lands here — marks the row failed with the step name and error message so the app can surface it."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0a062f5a-30b5-4358-82e3-dc867c633977",
+              "leftValue": "={{ $env.ERROR_NOTIFY_WEBHOOK }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d6336520-72af-434b-949f-c4086cc09a7d",
+      "name": "Webhook Notify Configured?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3312,
+        320
+      ],
+      "notes": "Only fires the webhook notification if ERROR_NOTIFY_WEBHOOK is configured."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ERROR_NOTIFY_WEBHOOK }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ event: \"workflow_failed\", item_id: $('Set Variables').item.json.item_id, step_failed: $prevNode.name, error: ($json.error && $json.error.message) ? $json.error.message : \"Unknown error\", photo_url: $('Set Variables').item.json.photo_url, timestamp: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "aaa318b3-1b76-452f-918e-14dda1aa07f7",
+      "name": "Notify via Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3520,
+        272
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "POSTs a failure event to the app's own error-notification endpoint."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "23647607-bc53-4358-aa2c-e77dfcf2894a",
+              "leftValue": "={{ $env.ERROR_NOTIFY_EMAIL }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4d9bb433-c57d-4b51-aff3-2f87c0468349",
+      "name": "Email Notify Configured?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3312,
+        528
+      ],
+      "notes": "Only fires the email notification if ERROR_NOTIFY_EMAIL is configured."
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.ERROR_NOTIFY_EMAIL }}",
+        "toEmail": "={{ $env.ERROR_NOTIFY_EMAIL }}",
+        "subject": "=⚠️ Resell AI Workflow Failed — Item {{ $('Set Variables').item.json.item_id }}",
+        "emailFormat": "text",
+        "text": "=Workflow failure alert.\n\nItem ID:     {{ $('Set Variables').item.json.item_id }}\nFailed Step: {{ $prevNode.name }}\nError:       {{ ($json.error && $json.error.message) ? $json.error.message : 'Unknown error' }}\nPhoto URL:   {{ $('Set Variables').item.json.photo_url }}\nTimestamp:   {{ new Date().toISOString() }}\n\nCheck your N8N execution log for full details.",
+        "options": {}
+      },
+      "id": "67ae72e3-26ea-421d-bd77-b727f38e7514",
+      "name": "Notify via Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3520,
+        528
+      ],
+      "webhookId": "ceb3d7e3-b542-4612-99bc-de33f39ec738",
+      "onError": "continueRegularOutput",
+      "notes": "Sends a plain-text failure alert email. After import, select/create your SMTP credential on this node (n8n Settings → Credentials) — not env-var driven since n8n credentials aren't expression-capable."
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Verify Webhook Secret",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Webhook Secret": {
+      "main": [
+        [
+          {
+            "node": "Set Variables",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Variables": {
+      "main": [
+        [
+          {
+            "node": "Mark Processing in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Processing in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI: Image Recognition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: Image Recognition": {
+      "main": [
+        [
+          {
+            "node": "Parse Image Recognition",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Image Recognition": {
+      "main": [
+        [
+          {
+            "node": "Brave Search 1: Product Identification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brave Search 1: Product Identification": {
+      "main": [
+        [
+          {
+            "node": "Wait 1s (1)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1s (1)": {
+      "main": [
+        [
+          {
+            "node": "Brave Search 2: Specifications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brave Search 2: Specifications": {
+      "main": [
+        [
+          {
+            "node": "Wait 1s (2)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1s (2)": {
+      "main": [
+        [
+          {
+            "node": "Brave Search 3: Retail Price",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brave Search 3: Retail Price": {
+      "main": [
+        [
+          {
+            "node": "AI: Product Research Synthesis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: Product Research Synthesis": {
+      "main": [
+        [
+          {
+            "node": "Parse Product Research",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Product Research": {
+      "main": [
+        [
+          {
+            "node": "Brave Search 4: eBay Sold Prices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brave Search 4: eBay Sold Prices": {
+      "main": [
+        [
+          {
+            "node": "Wait 1s (3)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1s (3)": {
+      "main": [
+        [
+          {
+            "node": "Brave Search 5: Used Market Prices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brave Search 5: Used Market Prices": {
+      "main": [
+        [
+          {
+            "node": "Wait 1s (4)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1s (4)": {
+      "main": [
+        [
+          {
+            "node": "Brave Search 6: Price Guide / Resale Value",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brave Search 6: Price Guide / Resale Value": {
+      "main": [
+        [
+          {
+            "node": "eBay: Get OAuth Token",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "eBay: Get OAuth Token": {
+      "main": [
+        [
+          {
+            "node": "eBay: Browse API Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "eBay: Browse API Search": {
+      "main": [
+        [
+          {
+            "node": "AI: Valuation Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: Valuation Analysis": {
+      "main": [
+        [
+          {
+            "node": "Parse Valuation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Valuation": {
+      "main": [
+        [
+          {
+            "node": "AI: eBay Listing Builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: eBay Listing Builder": {
+      "main": [
+        [
+          {
+            "node": "Parse eBay Listing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse eBay Listing": {
+      "main": [
+        [
+          {
+            "node": "AI: Facebook Marketplace Post Builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: Facebook Marketplace Post Builder": {
+      "main": [
+        [
+          {
+            "node": "Parse Facebook Post",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Facebook Post": {
+      "main": [
+        [
+          {
+            "node": "Save All Results to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save All Results to Supabase": {
+      "main": [
+        [
+          {
+            "node": "Workflow Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Failed in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Webhook Notify Configured?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email Notify Configured?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Notify Configured?": {
+      "main": [
+        [
+          {
+            "node": "Notify via Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Notify Configured?": {
+      "main": [
+        [
+          {
+            "node": "Notify via Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "02b47748-fb62-45a6-adbe-fff6e059e822",
+  "activeVersionId": "02b47748-fb62-45a6-adbe-fff6e059e822",
+  "versionCounter": 2,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-07-21T23:49:42.856Z",
+      "createdAt": "2026-07-21T23:49:42.856Z",
+      "role": "workflow:owner",
+      "workflowId": "DacA7DQAbAwyE1jX",
+      "projectId": "JvLqNB1LGhDoVnEA",
+      "project": {
+        "updatedAt": "2026-07-20T23:07:07.395Z",
+        "createdAt": "2026-07-20T23:05:50.343Z",
+        "id": "JvLqNB1LGhDoVnEA",
+        "name": "Michael Foss <mfoss@quietwizard.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3f56cfcf-d6bb-46b3-b74f-d78a16c84c14"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

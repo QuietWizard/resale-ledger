@@ -1,0 +1,125 @@
+{
+  "id": "ktYbTUqWPl7O2Qc1",
+  "name": "eBay Account Deletion — Challenge Verification (GET)",
+  "nodes": [
+    {
+      "id": "f4f61252-816c-45b1-81b3-acf46c77dc81",
+      "name": "Verify eBay Challenge (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "ebay-notifications",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "notes": "eBay hits this with ?challenge_code=... once when you save the endpoint in the Developer Portal.",
+      "webhookId": "50298bca-2cbf-4bd0-864a-98f4b134c385"
+    },
+    {
+      "id": "c84f20c8-7bf3-421e-8f33-812989112668",
+      "name": "Build Challenge String",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        200
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ca613737-859b-4654-827c-e1947a4511ef",
+              "name": "challenge_input",
+              "type": "string",
+              "value": "={{ $json.query.challenge_code + $env.EBAY_VERIFICATION_TOKEN + $env.EBAY_NOTIFICATION_ENDPOINT }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "Order matters: challengeCode + verificationToken + endpoint (per eBay's own event-notification-nodejs-sdk validator.js). endpoint must be byte-identical to the URL registered in the eBay Developer Portal."
+    },
+    {
+      "id": "dbb1d8b1-7585-404e-aec3-2ef485dc1b42",
+      "name": "Hash Challenge",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        440,
+        200
+      ],
+      "parameters": {
+        "action": "hash",
+        "type": "SHA256",
+        "value": "={{ $json.challenge_input }}",
+        "dataPropertyName": "challengeResponse",
+        "encoding": "hex",
+        "binaryData": false
+      },
+      "notes": "SHA256 hex digest — equivalent to Node's hash.update(a).update(b).update(c).digest('hex')."
+    },
+    {
+      "id": "007928b3-3e53-4f35-84bc-f6674c0bb675",
+      "name": "Respond Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        660,
+        200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"challengeResponse\": $json.challengeResponse } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "notes": "eBay expects exactly {\"challengeResponse\": \"<hex>\"} with HTTP 200."
+    }
+  ],
+  "connections": {
+    "Verify eBay Challenge (GET)": {
+      "main": [
+        [
+          {
+            "node": "Build Challenge String",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Challenge String": {
+      "main": [
+        [
+          {
+            "node": "Hash Challenge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hash Challenge": {
+      "main": [
+        [
+          {
+            "node": "Respond Challenge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

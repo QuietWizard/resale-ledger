@@ -1,54 +1,56 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import CaptureBar from "@/components/CaptureBar";
+import Link from "next/link";
 import TagCard from "@/components/TagCard";
-import { supabase, ITEM_PHOTOS_BUCKET, N8N_CAPTURE_WEBHOOK_URL } from "@/lib/supabase";
-import type { Item } from "@/lib/types";
+import { supabase, LISTINGS_TABLE } from "@/lib/supabase";
+import type { Listing } from "@/lib/types";
 
 type Tab = "feed" | "archived";
 
 export default function HomePage() {
-  const [items, setItems] = useState<Item[]>([]);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [tab, setTab] = useState<Tab>("feed");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadItems() {
+    async function loadListings() {
       const { data, error } = await supabase
-        .from("items")
+        .from(LISTINGS_TABLE)
         .select("*")
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Failed to load items:", error.message);
+        console.error("Failed to load listings:", error.message);
       } else if (isMounted && data) {
-        setItems(data as Item[]);
+        setListings(data as Listing[]);
       }
       setLoading(false);
     }
 
-    loadItems();
+    loadListings();
 
     // Live updates: as soon as n8n finishes writing back a result, the feed reflects it
     // without a manual refresh.
     const channel = supabase
-      .channel("items-changes")
+      .channel("listings-changes")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "items" },
+        { event: "*", schema: "public", table: LISTINGS_TABLE },
         (payload) => {
-          setItems((current) => {
+          setListings((current) => {
             if (payload.eventType === "INSERT") {
-              return [payload.new as Item, ...current];
+              return [payload.new as Listing, ...current];
             }
             if (payload.eventType === "UPDATE") {
-              return current.map((i) => (i.id === (payload.new as Item).id ? (payload.new as Item) : i));
+              return current.map((i) =>
+                i.id === (payload.new as Listing).id ? (payload.new as Listing) : i
+              );
             }
             if (payload.eventType === "DELETE") {
-              return current.filter((i) => i.id !== (payload.old as Item).id);
+              return current.filter((i) => i.id !== (payload.old as Listing).id);
             }
             return current;
           });
@@ -62,68 +64,16 @@ export default function HomePage() {
     };
   }, []);
 
-  async function handleFilesSelected(files: FileList) {
-    for (const file of Array.from(files)) {
-      await captureItem(file);
-    }
-  }
-
-  async function captureItem(file: File) {
-    // 1. Insert a placeholder row immediately so the user sees feedback right away.
-    const { data: inserted, error: insertError } = await supabase
-      .from("items")
-      .insert({ name: "New item", status: "processing" })
-      .select()
-      .single();
-
-    if (insertError || !inserted) {
-      console.error("Failed to create item:", insertError?.message);
-      return;
-    }
-
-    // 2. Upload the photo to Supabase Storage, keyed by the new item's id.
-    const filePath = `${inserted.id}/${file.name}`;
-    const { error: uploadError } = await supabase.storage
-      .from(ITEM_PHOTOS_BUCKET)
-      .upload(filePath, file, { upsert: true });
-
-    if (uploadError) {
-      console.error("Failed to upload photo:", uploadError.message);
-      return;
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(ITEM_PHOTOS_BUCKET).getPublicUrl(filePath);
-
-    await supabase.from("items").update({ photo_url: publicUrl }).eq("id", inserted.id);
-
-    // 3. Kick off the n8n pipeline: identify → research → draft. n8n writes the
-    // results back to this same row (see the n8n workflow README).
-    try {
-      await fetch(N8N_CAPTURE_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ item_id: inserted.id, photo_url: publicUrl }),
-      });
-    } catch (err) {
-      console.error("Failed to reach n8n webhook:", err);
-    }
-  }
-
-  async function handleArchiveToggle(item: Item) {
-    const nextStatus = item.status === "archived" ? "ready" : "archived";
+  async function handleArchiveToggle(listing: Listing) {
+    const isArchived = listing.archived_at != null;
     await supabase
-      .from("items")
-      .update({
-        status: nextStatus,
-        archived_at: nextStatus === "archived" ? new Date().toISOString() : null,
-      })
-      .eq("id", item.id);
+      .from(LISTINGS_TABLE)
+      .update({ archived_at: isArchived ? null : new Date().toISOString() })
+      .eq("id", listing.id);
   }
 
-  const visibleItems = items.filter((i) =>
-    tab === "archived" ? i.status === "archived" : i.status !== "archived"
+  const visibleListings = listings.filter((l) =>
+    tab === "archived" ? l.archived_at != null : l.archived_at == null
   );
 
   return (
@@ -140,7 +90,18 @@ export default function HomePage() {
         </p>
       </header>
 
-      <CaptureBar onFilesSelected={handleFilesSelected} />
+      <div className="sticky top-0 z-10 border-b border-line bg-paper px-5 py-4">
+        <Link
+          href="/new"
+          className="flex items-center justify-center gap-2 rounded-lg bg-ledger px-3.5 py-3 font-body text-sm font-semibold text-paper-card shadow-card transition-transform active:scale-[0.97]"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 flex-shrink-0">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          New Listing
+        </Link>
+      </div>
 
       <div className="flex gap-1 px-5 pt-3.5">
         {(["feed", "archived"] as Tab[]).map((t) => (
@@ -161,17 +122,17 @@ export default function HomePage() {
       <div className="flex flex-col gap-3.5 px-5 pb-5 pt-4">
         {loading ? (
           <p className="py-10 text-center text-sm text-ink-soft">Loading…</p>
-        ) : visibleItems.length === 0 ? (
+        ) : visibleListings.length === 0 ? (
           <div className="px-5 py-16 text-center text-ink-soft">
             <p className="text-sm leading-relaxed">
               {tab === "archived"
                 ? "Nothing archived yet — sold items will land here."
-                : "No items in the feed yet. Take a photo of something to get started."}
+                : "No items in the feed yet. Tap New Listing to get started."}
             </p>
           </div>
         ) : (
-          visibleItems.map((item) => (
-            <TagCard key={item.id} item={item} onArchiveToggle={handleArchiveToggle} />
+          visibleListings.map((listing) => (
+            <TagCard key={listing.id} listing={listing} onArchiveToggle={handleArchiveToggle} />
           ))
         )}
       </div>

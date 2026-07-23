@@ -3,22 +3,23 @@
 import { useRef } from "react";
 
 interface CaptureBarProps {
-  onFilesSelected: (files: FileList) => void;
+  onFileSelected: (file: File) => void;
 }
 
-export default function CaptureBar({ onFilesSelected }: CaptureBarProps) {
+export default function CaptureBar({ onFileSelected }: CaptureBarProps) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files && e.target.files.length > 0) {
-      onFilesSelected(e.target.files);
+    const file = e.target.files?.[0];
+    if (file) {
+      onFileSelected(file);
       e.target.value = ""; // allow re-selecting the same file later
     }
   }
 
   return (
-    <div className="sticky top-0 z-10 flex gap-2.5 border-b border-line bg-paper px-5 py-4">
+    <div className="flex gap-2.5">
       <button
         onClick={() => cameraInputRef.current?.click()}
         className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-ledger px-3.5 py-3 font-body text-sm font-semibold text-paper-card shadow-card transition-transform active:scale-[0.97]"
@@ -52,7 +53,6 @@ export default function CaptureBar({ onFilesSelected }: CaptureBarProps) {
         ref={uploadInputRef}
         type="file"
         accept="image/*"
-        multiple
         className="hidden"
         onChange={handleChange}
       />
