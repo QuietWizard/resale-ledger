@@ -8,6 +8,17 @@ export interface Dimensions {
   unit: string | null;
 }
 
+export type ComparableMatchType = "exact" | "similar" | "seller_provided";
+
+export interface Comparable {
+  title: string | null;
+  price_usd: number | null;
+  url: string | null;
+  platform: string | null;
+  match_type: ComparableMatchType | null;
+  note: string | null;
+}
+
 export interface Listing {
   id: string;
   created_at: string;
@@ -18,6 +29,7 @@ export interface Listing {
   missing_items: string | null;
   seller_notes: string | null;
   seller_original_price: number | null;
+  seller_comparable_url: string | null;
 
   ai_status: AiStatus;
   error_message: string | null;
@@ -47,6 +59,9 @@ export interface Listing {
   price_range_high: number | null;
   pricing_rationale: string | null;
   best_platform: string | null;
+  data_confidence: "high" | "medium" | "low" | null;
+  data_confidence_reason: string | null;
+  comparables: Comparable[] | null;
 
   ebay_title: string | null;
   ebay_subtitle: string | null;

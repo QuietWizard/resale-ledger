@@ -12,6 +12,7 @@ export interface NewListingFields {
   missingItems: string;
   sellerNotes: string;
   originalPrice: string;
+  comparableUrl: string;
 }
 
 // Fires the n8n pipeline for an existing (already-inserted) listing row. n8n flips
@@ -28,6 +29,7 @@ async function fireWebhook(
     missingItems: string | null;
     sellerNotes: string | null;
     originalPrice: number | null;
+    comparableUrl: string | null;
   }
 ) {
   try {
@@ -45,6 +47,7 @@ async function fireWebhook(
         missing_items: fields.missingItems,
         seller_notes: fields.sellerNotes,
         original_price: fields.originalPrice,
+        comparable_url: fields.comparableUrl,
       }),
     });
   } catch (err) {
@@ -69,6 +72,7 @@ export async function createListing(file: File, fields: NewListingFields): Promi
   const missingItems = fields.missingItems.trim() || null;
   const sellerNotes = fields.sellerNotes.trim() || null;
   const originalPrice = parseOriginalPrice(fields.originalPrice);
+  const comparableUrl = fields.comparableUrl.trim() || null;
 
   // 1. Insert the row first (ai_status defaults to 'processing') so the feed shows
   // feedback immediately, then attach the photo once it's uploaded.
@@ -80,6 +84,7 @@ export async function createListing(file: File, fields: NewListingFields): Promi
       missing_items: missingItems,
       seller_notes: sellerNotes,
       seller_original_price: originalPrice,
+      seller_comparable_url: comparableUrl,
     })
     .select()
     .single();
@@ -112,7 +117,14 @@ export async function createListing(file: File, fields: NewListingFields): Promi
   }
 
   // 3. Kick off the n8n pipeline: identify → research → value → draft.
-  await fireWebhook(inserted.id, publicUrl, { name, sellerCondition, missingItems, sellerNotes, originalPrice });
+  await fireWebhook(inserted.id, publicUrl, {
+    name,
+    sellerCondition,
+    missingItems,
+    sellerNotes,
+    originalPrice,
+    comparableUrl,
+  });
 
   return inserted.id;
 }
@@ -131,6 +143,7 @@ export async function reprocessListing(
   const missingItems = fields.missingItems.trim() || null;
   const sellerNotes = fields.sellerNotes.trim() || null;
   const originalPrice = parseOriginalPrice(fields.originalPrice);
+  const comparableUrl = fields.comparableUrl.trim() || null;
 
   const { error: updateError } = await supabase
     .from(LISTINGS_TABLE)
@@ -140,6 +153,7 @@ export async function reprocessListing(
       missing_items: missingItems,
       seller_notes: sellerNotes,
       seller_original_price: originalPrice,
+      seller_comparable_url: comparableUrl,
     })
     .eq("id", id);
 
@@ -147,7 +161,14 @@ export async function reprocessListing(
     throw new Error(updateError.message);
   }
 
-  await fireWebhook(id, photoUrl, { name, sellerCondition, missingItems, sellerNotes, originalPrice });
+  await fireWebhook(id, photoUrl, {
+    name,
+    sellerCondition,
+    missingItems,
+    sellerNotes,
+    originalPrice,
+    comparableUrl,
+  });
 }
 
 // Deletes a listing row and its uploaded photo. Throws on failure so the UI can
