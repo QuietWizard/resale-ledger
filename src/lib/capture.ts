@@ -11,6 +11,7 @@ export interface NewListingFields {
   sellerCondition: string;
   missingItems: string;
   sellerNotes: string;
+  originalPrice: string;
 }
 
 // Fires the n8n pipeline for an existing (already-inserted) listing row. n8n flips
@@ -21,7 +22,13 @@ export interface NewListingFields {
 async function fireWebhook(
   itemId: string,
   photoUrl: string,
-  fields: { name: string | null; sellerCondition: string | null; missingItems: string | null; sellerNotes: string | null }
+  fields: {
+    name: string | null;
+    sellerCondition: string | null;
+    missingItems: string | null;
+    sellerNotes: string | null;
+    originalPrice: number | null;
+  }
 ) {
   try {
     await fetch(N8N_CAPTURE_WEBHOOK_URL, {
@@ -37,11 +44,21 @@ async function fireWebhook(
         seller_condition: fields.sellerCondition,
         missing_items: fields.missingItems,
         seller_notes: fields.sellerNotes,
+        original_price: fields.originalPrice,
       }),
     });
   } catch (err) {
     console.error("Failed to reach n8n webhook:", err);
   }
+}
+
+// Parses a form's original-price string into a number for storage, or null if blank
+// or not a valid positive number.
+function parseOriginalPrice(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 // Creates a listing row, uploads its photo, and fires the n8n pipeline. Throws with a
@@ -51,6 +68,7 @@ export async function createListing(file: File, fields: NewListingFields): Promi
   const sellerCondition = fields.sellerCondition.trim() || null;
   const missingItems = fields.missingItems.trim() || null;
   const sellerNotes = fields.sellerNotes.trim() || null;
+  const originalPrice = parseOriginalPrice(fields.originalPrice);
 
   // 1. Insert the row first (ai_status defaults to 'processing') so the feed shows
   // feedback immediately, then attach the photo once it's uploaded.
@@ -61,6 +79,7 @@ export async function createListing(file: File, fields: NewListingFields): Promi
       seller_condition: sellerCondition,
       missing_items: missingItems,
       seller_notes: sellerNotes,
+      seller_original_price: originalPrice,
     })
     .select()
     .single();
@@ -93,7 +112,7 @@ export async function createListing(file: File, fields: NewListingFields): Promi
   }
 
   // 3. Kick off the n8n pipeline: identify → research → value → draft.
-  await fireWebhook(inserted.id, publicUrl, { name, sellerCondition, missingItems, sellerNotes });
+  await fireWebhook(inserted.id, publicUrl, { name, sellerCondition, missingItems, sellerNotes, originalPrice });
 
   return inserted.id;
 }
@@ -111,6 +130,7 @@ export async function reprocessListing(
   const sellerCondition = fields.sellerCondition.trim() || null;
   const missingItems = fields.missingItems.trim() || null;
   const sellerNotes = fields.sellerNotes.trim() || null;
+  const originalPrice = parseOriginalPrice(fields.originalPrice);
 
   const { error: updateError } = await supabase
     .from(LISTINGS_TABLE)
@@ -119,6 +139,7 @@ export async function reprocessListing(
       seller_condition: sellerCondition,
       missing_items: missingItems,
       seller_notes: sellerNotes,
+      seller_original_price: originalPrice,
     })
     .eq("id", id);
 
@@ -126,7 +147,7 @@ export async function reprocessListing(
     throw new Error(updateError.message);
   }
 
-  await fireWebhook(id, photoUrl, { name, sellerCondition, missingItems, sellerNotes });
+  await fireWebhook(id, photoUrl, { name, sellerCondition, missingItems, sellerNotes, originalPrice });
 }
 
 // Deletes a listing row and its uploaded photo. Throws on failure so the UI can

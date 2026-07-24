@@ -24,6 +24,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
   const [editCondition, setEditCondition] = useState("");
   const [editMissingItems, setEditMissingItems] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editOriginalPrice, setEditOriginalPrice] = useState("");
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
 
@@ -76,6 +77,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
     setEditCondition(listing.seller_condition ?? "");
     setEditMissingItems(listing.missing_items ?? "");
     setEditNotes(listing.seller_notes ?? "");
+    setEditOriginalPrice(listing.seller_original_price != null ? String(listing.seller_original_price) : "");
     setRetryError(null);
     setEditing(true);
   }
@@ -92,6 +94,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
         sellerCondition: editCondition,
         missingItems: editMissingItems,
         sellerNotes: editNotes,
+        originalPrice: editOriginalPrice,
       });
       router.push("/");
     } catch (err) {
@@ -184,6 +187,22 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[11px] uppercase tracking-wider text-ink-soft">
+                Original Price <span className="normal-case tracking-normal">(optional — if you know it)</span>
+              </span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={editOriginalPrice}
+                onChange={(e) => setEditOriginalPrice(e.target.value)}
+                placeholder="e.g. 150.00"
+                className="rounded-lg border border-line bg-paper-card px-3.5 py-3 text-sm text-ink placeholder:text-ink-soft/60 focus:outline-none focus:ring-2 focus:ring-ledger"
+              />
             </label>
 
             <label className="flex flex-col gap-1.5">
