@@ -17,6 +17,7 @@ export interface Listing {
   seller_condition: string | null;
   missing_items: string | null;
   seller_notes: string | null;
+  seller_original_price: number | null;
 
   ai_status: AiStatus;
   error_message: string | null;

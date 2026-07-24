@@ -18,6 +18,7 @@ export default function NewListingPage() {
   const [sellerCondition, setSellerCondition] = useState("");
   const [missingItems, setMissingItems] = useState("");
   const [sellerNotes, setSellerNotes] = useState("");
+  const [originalPrice, setOriginalPrice] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +45,7 @@ export default function NewListingPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await createListing(photoFile, { name, sellerCondition, missingItems, sellerNotes });
+      await createListing(photoFile, { name, sellerCondition, missingItems, sellerNotes, originalPrice });
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create listing");
@@ -122,6 +123,22 @@ export default function NewListingPage() {
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[11px] uppercase tracking-wider text-ink-soft">
+                Original Price <span className="normal-case tracking-normal">(optional — if you know it)</span>
+              </span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={originalPrice}
+                onChange={(e) => setOriginalPrice(e.target.value)}
+                placeholder="e.g. 150.00"
+                className="rounded-lg border border-line bg-paper-card px-3.5 py-3 text-sm text-ink placeholder:text-ink-soft/60 focus:outline-none focus:ring-2 focus:ring-ledger"
+              />
             </label>
 
             <label className="flex flex-col gap-1.5">
