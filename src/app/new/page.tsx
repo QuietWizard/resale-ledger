@@ -19,6 +19,7 @@ export default function NewListingPage() {
   const [missingItems, setMissingItems] = useState("");
   const [sellerNotes, setSellerNotes] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
+  const [comparableUrl, setComparableUrl] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +46,14 @@ export default function NewListingPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await createListing(photoFile, { name, sellerCondition, missingItems, sellerNotes, originalPrice });
+      await createListing(photoFile, {
+        name,
+        sellerCondition,
+        missingItems,
+        sellerNotes,
+        originalPrice,
+        comparableUrl,
+      });
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create listing");
@@ -137,6 +145,20 @@ export default function NewListingPage() {
                 value={originalPrice}
                 onChange={(e) => setOriginalPrice(e.target.value)}
                 placeholder="e.g. 150.00"
+                className="rounded-lg border border-line bg-paper-card px-3.5 py-3 text-sm text-ink placeholder:text-ink-soft/60 focus:outline-none focus:ring-2 focus:ring-ledger"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[11px] uppercase tracking-wider text-ink-soft">
+                Comparable Listing URL{" "}
+                <span className="normal-case tracking-normal">(optional — a similar item you found)</span>
+              </span>
+              <input
+                type="url"
+                value={comparableUrl}
+                onChange={(e) => setComparableUrl(e.target.value)}
+                placeholder="e.g. an eBay listing link"
                 className="rounded-lg border border-line bg-paper-card px-3.5 py-3 text-sm text-ink placeholder:text-ink-soft/60 focus:outline-none focus:ring-2 focus:ring-ledger"
               />
             </label>

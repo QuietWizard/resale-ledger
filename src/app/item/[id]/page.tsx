@@ -25,6 +25,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
   const [editMissingItems, setEditMissingItems] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [editOriginalPrice, setEditOriginalPrice] = useState("");
+  const [editComparableUrl, setEditComparableUrl] = useState("");
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
 
@@ -78,6 +79,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
     setEditMissingItems(listing.missing_items ?? "");
     setEditNotes(listing.seller_notes ?? "");
     setEditOriginalPrice(listing.seller_original_price != null ? String(listing.seller_original_price) : "");
+    setEditComparableUrl(listing.seller_comparable_url ?? "");
     setRetryError(null);
     setEditing(true);
   }
@@ -95,6 +97,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
         missingItems: editMissingItems,
         sellerNotes: editNotes,
         originalPrice: editOriginalPrice,
+        comparableUrl: editComparableUrl,
       });
       router.push("/");
     } catch (err) {
@@ -207,6 +210,20 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
 
             <label className="flex flex-col gap-1.5">
               <span className="font-mono text-[11px] uppercase tracking-wider text-ink-soft">
+                Comparable Listing URL{" "}
+                <span className="normal-case tracking-normal">(optional — a similar item you found)</span>
+              </span>
+              <input
+                type="url"
+                value={editComparableUrl}
+                onChange={(e) => setEditComparableUrl(e.target.value)}
+                placeholder="e.g. an eBay listing link"
+                className="rounded-lg border border-line bg-paper-card px-3.5 py-3 text-sm text-ink placeholder:text-ink-soft/60 focus:outline-none focus:ring-2 focus:ring-ledger"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[11px] uppercase tracking-wider text-ink-soft">
                 Missing Items <span className="normal-case tracking-normal">(optional)</span>
               </span>
               <input
@@ -278,7 +295,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
               </p>
             )}
 
-            <div className="mt-3 flex items-baseline gap-2">
+            <div className="mt-3 flex flex-wrap items-baseline gap-2">
               <span className="font-mono text-2xl font-bold text-ledger-dark">
                 {formatCurrency(listing.recommended_price)}
               </span>
@@ -288,7 +305,26 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                   {formatCurrency(listing.price_range_high)}
                 </span>
               )}
+              {listing.data_confidence && (
+                <span
+                  title={listing.data_confidence_reason ?? undefined}
+                  className={`rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${
+                    listing.data_confidence === "high"
+                      ? "border-ledger text-ledger-dark"
+                      : listing.data_confidence === "medium"
+                        ? "border-brass text-brass"
+                        : "border-stamp text-stamp"
+                  }`}
+                >
+                  {listing.data_confidence} confidence
+                </span>
+              )}
             </div>
+            {listing.data_confidence_reason && (
+              <p className="mt-1 text-[11.5px] italic leading-relaxed text-ink-soft">
+                {listing.data_confidence_reason}
+              </p>
+            )}
 
             <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[11px] text-ink-soft">
               {listing.original_retail_price != null && (
@@ -309,6 +345,49 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
               <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink-soft">
                 {listing.pricing_rationale}
               </p>
+            )}
+
+            {listing.comparables && listing.comparables.length > 0 && (
+              <div className="mt-3.5">
+                <p className="font-mono text-[11px] uppercase tracking-wider text-ledger">Comparables</p>
+                <ul className="mt-1.5 flex flex-col gap-1.5">
+                  {listing.comparables.map((c, i) => (
+                    <li
+                      key={i}
+                      className="rounded-lg border border-line bg-paper-card p-2.5 text-[12px] leading-snug"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        {c.url ? (
+                          <a
+                            href={c.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-ink underline decoration-line underline-offset-2"
+                          >
+                            {c.title ?? "Comparable listing"}
+                          </a>
+                        ) : (
+                          <span className="text-ink">{c.title ?? "Comparable listing"}</span>
+                        )}
+                        {c.price_usd != null && (
+                          <span className="shrink-0 font-mono text-ledger-dark">
+                            {formatCurrency(c.price_usd)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-ink-soft">
+                        {c.match_type && (
+                          <span className="rounded border border-line px-1.5 py-0.5">
+                            {c.match_type.replace("_", " ")}
+                          </span>
+                        )}
+                        {c.platform && <span>{c.platform}</span>}
+                      </div>
+                      {c.note && <p className="mt-1 text-ink-soft">{c.note}</p>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
 
             {listing.key_features && listing.key_features.length > 0 && (

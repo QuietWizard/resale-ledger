@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-24T16:39:49.667Z",
+  "updatedAt": "2026-07-24T17:50:20.569Z",
   "createdAt": "2026-07-21T23:49:42.856Z",
   "id": "DacA7DQAbAwyE1jX",
   "name": "Resell Ledger AI Research & Listing Automation",
@@ -128,6 +128,12 @@
               "name": "original_price",
               "type": "string",
               "value": "={{ $json.body.original_price ?? '' }}"
+            },
+            {
+              "id": "c7e2b4a1-9f3d-4e6a-8b1c-2d5f7a9e3b60",
+              "name": "seller_comparable_url",
+              "type": "string",
+              "value": "={{ $json.body.comparable_url ?? '' }}"
             }
           ]
         },
@@ -432,7 +438,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  model: $env['AI_MODEL_RESEARCH_' + $env.AI_PROVIDER],\n  max_tokens: 4000,\n  temperature: 0.2,\n  messages: [\n    {\n      role: \"system\",\n      content: \"You are a professional product researcher specializing in the secondhand and resale market. You create comprehensive, accurate product profiles from image analysis and web search results. Your profiles are used directly to create eBay and Facebook Marketplace listings — accuracy and completeness are critical. Always respond in raw, valid JSON only. No markdown, no prose, no code fences.\"\n    },\n    {\n      role: \"user\",\n      content: `Synthesize the following data into a comprehensive product profile.\n\nIMAGE ANALYSIS RESULT:\n${JSON.stringify($('Parse Image Recognition').item.json)}\n\nSELLER INFO:\n- Seller's name for item: ${$('Set Variables').item.json.seller_name || 'Not provided'}\n- Condition: ${$('Set Variables').item.json.seller_condition}\n- Missing items: ${$('Set Variables').item.json.missing_items}\n- Notes: ${$('Set Variables').item.json.seller_notes || 'None'}\n\nWEB SEARCH RESULTS — Product Identification:\n${$('Brave Search 1: Product Identification').item.json.web?.results?.slice(0,5).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nWEB SEARCH RESULTS — Specifications:\n${$('Brave Search 2: Specifications').item.json.web?.results?.slice(0,5).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nWEB SEARCH RESULTS — Retail Price:\n${$('Brave Search 3: Retail Price').item.json.web?.results?.slice(0,5).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nIMPORTANT — VERIFY BEFORE CONFIRMING:\n- Check whether the web search results actually support the image analysis's guessed name. If most \\\"Product Identification\\\" results point to third-party/fan-made/print-on-demand sources (Etsy, INPRNT, Redbubble, DeviantArt, Society6, etc.) rather than the official brand, publisher, or an authorized retailer, treat the guessed name as UNVERIFIED — look through the results for a more official product name and use that instead if you find one.\n- If multiple similarly-themed products appear (different editions, sizes, or formats of related merchandise — e.g. canvas vs. framed print, numbered/limited vs. mass-market), identify which SPECIFIC one matches this item's physical description rather than defaulting to whichever has the most search results.\n- Only use a retail price if its source clearly refers to the SAME confirmed product, edition, and format — never substitute the price of a similar-but-different or currently-sold item for one that may be discontinued.\n- If this item appears to be discontinued, a convention/event exclusive, or a limited/numbered edition, say so explicitly in short_description and key_features — this materially affects resale value.\n\nReturn ONLY this exact JSON:\n{\n  \"confirmed_product_name\": \"Full verified product name\",\n  \"brand\": \"Brand name\",\n  \"model\": \"Model name\",\n  \"model_number\": \"Model/part number or null\",\n  \"upc\": \"UPC if found or null\",\n  \"asin\": \"Amazon ASIN if found or null\",\n  \"category\": \"Primary category\",\n  \"subcategory\": \"Subcategory\",\n  \"year_released\": \"Year or year range or null\",\n  \"country_of_origin\": \"Country or null\",\n  \"item_color\": \"The specific color of this particular item\",\n  \"colors_available\": [\"all colors this model came in\"],\n  \"dimensions\": {\n    \"length\": \"value or null\",\n    \"width\": \"value or null\",\n    \"height\": \"value or null\",\n    \"weight\": \"value or null\",\n    \"unit\": \"inches/lbs or cm/kg\"\n  },\n  \"key_features\": [\"feature 1\", \"feature 2\", \"up to 10 key features\"],\n  \"materials\": [\"primary materials\"],\n  \"whats_in_box_new\": [\"what comes in box when purchased new\"],\n  \"whats_included_this_item\": [\"what appears to be included with this specific item based on seller notes and condition\"],\n  \"condition_full_description\": \"Detailed, honest condition description incorporating seller_condition level, missing_items, visible_condition_notes, and seller_notes. Written in professional listing language.\",\n  \"ebay_item_specifics\": {\n    \"Brand\": \"\",\n    \"Model\": \"\",\n    \"MPN\": \"or Does Not Apply\",\n    \"Type\": \"\",\n    \"Color\": \"\",\n    \"Unit Type\": \"or N/A\",\n    \"Country/Region of Manufacture\": \"or Unknown\"\n  },\n  \"short_description\": \"2-3 sentence product description for listings\",\n  \"retail_price_usd\": \"number or null — original MSRP from research\",\n  \"current_new_price_usd\": \"number or null — what it costs new today\"\n}`\n    }\n  ]\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  model: $env['AI_MODEL_RESEARCH_' + $env.AI_PROVIDER],\n  max_tokens: 4000,\n  temperature: 0.2,\n  messages: [\n    {\n      role: \"system\",\n      content: \"You are a professional product researcher specializing in the secondhand and resale market. You create comprehensive, accurate product profiles from image analysis and web search results. Your profiles are used directly to create eBay and Facebook Marketplace listings — accuracy and completeness are critical. Always respond in raw, valid JSON only. No markdown, no prose, no code fences.\"\n    },\n    {\n      role: \"user\",\n      content: `Synthesize the following data into a comprehensive product profile.\n\nIMAGE ANALYSIS RESULT:\n${JSON.stringify($('Parse Image Recognition').item.json)}\n\nSELLER INFO:\n- Seller's name for item: ${$('Set Variables').item.json.seller_name || 'Not provided'}\n- Condition: ${$('Set Variables').item.json.seller_condition}\n- Missing items: ${$('Set Variables').item.json.missing_items}\n- Notes: ${$('Set Variables').item.json.seller_notes || 'None'}\n\nWEB SEARCH RESULTS — Product Identification:\n${$('Brave Search 1: Product Identification').item.json.web?.results?.slice(0,5).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nWEB SEARCH RESULTS — Specifications:\n${$('Brave Search 2: Specifications').item.json.web?.results?.slice(0,5).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nWEB SEARCH RESULTS — Retail Price:\n${$('Brave Search 3: Retail Price').item.json.web?.results?.slice(0,5).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nIMPORTANT — VERIFY BEFORE CONFIRMING:\n- Check whether the web search results actually support the image analysis's guessed name. If most \\\"Product Identification\\\" results point to third-party/fan-made/print-on-demand sources (Etsy, INPRNT, Redbubble, DeviantArt, Society6, etc.) rather than the official brand, publisher, or an authorized retailer, treat the guessed name as UNVERIFIED — look through the results for a more official product name and use that instead if you find one.\n- If multiple similarly-themed products appear (different editions, sizes, or formats of related merchandise — e.g. canvas vs. framed print, numbered/limited vs. mass-market), identify which SPECIFIC one matches this item's physical description rather than defaulting to whichever has the most search results.\n- Only use a retail price if its source clearly refers to the SAME confirmed product, edition, and format — never substitute the price of a similar-but-different or currently-sold item for one that may be discontinued.\n- If this item appears to be discontinued, a convention/event exclusive, or a limited/numbered edition, say so explicitly in short_description and key_features — this materially affects resale value.\n\nReturn ONLY this exact JSON:\n{\n  \"confirmed_product_name\": \"Full verified product name\",\n  \"brand\": \"Brand name\",\n  \"model\": \"Model name\",\n  \"model_number\": \"Model/part number or null\",\n  \"upc\": \"UPC if found or null\",\n  \"asin\": \"Amazon ASIN if found or null\",\n  \"category\": \"Primary category\",\n  \"subcategory\": \"Subcategory\",\n  \"year_released\": \"Year or year range or null\",\n  \"country_of_origin\": \"Country or null\",\n  \"item_color\": \"The specific color of this particular item\",\n  \"colors_available\": [\"all colors this model came in\"],\n  \"dimensions\": {\n    \"length\": \"value or null\",\n    \"width\": \"value or null\",\n    \"height\": \"value or null\",\n    \"weight\": \"value or null\",\n    \"unit\": \"inches/lbs or cm/kg\"\n  },\n  \"key_features\": [\"feature 1\", \"feature 2\", \"up to 10 key features\"],\n  \"materials\": [\"primary materials\"],\n  \"whats_in_box_new\": [\"what comes in box when purchased new\"],\n  \"whats_included_this_item\": [\"what appears to be included with this specific item based on seller notes and condition\"],\n  \"condition_full_description\": \"Detailed, honest condition description incorporating seller_condition level, missing_items, visible_condition_notes, and seller_notes. Written in professional listing language.\",\n  \"ebay_item_specifics\": {\n    \"Brand\": \"\",\n    \"Model\": \"\",\n    \"MPN\": \"or Does Not Apply\",\n    \"Type\": \"\",\n    \"Color\": \"\",\n    \"Unit Type\": \"or N/A\",\n    \"Country/Region of Manufacture\": \"or Unknown\"\n  },\n  \"short_description\": \"2-3 sentence product description for listings\",\n  \"retail_price_usd\": \"number or null — original MSRP from research\",\n  \"current_new_price_usd\": \"number or null — what it costs new today\",\n  \"comparable_search_query\": \"A SHORT, broad search query (4-7 words) for finding market comparables — brand + core subject/theme only, deliberately omitting exact dimensions, edition wording, or full formal title. For niche/rare items where an exact-title match will not exist, this should be broad enough to surface visually or thematically SIMILAR items (same franchise, brand line, art style, or collectible category), not just identical ones. E.g. \\\"Blizzard Diablo IV collectible art print\\\" rather than \\\"Diablo Birth of the Nephalem Framed 12.75 x 30 Art Print\\\".\"\n}`\n    }\n  ]\n}) }}",
         "options": {}
       },
       "id": "5e7a5a82-aa93-4455-85f4-165b5fd96e07",
@@ -452,7 +458,7 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const raw = $input.item.json.choices[0].message.content;\nlet cleaned = raw.replace(/```json|```/g, '').trim();\nconst braceStart = cleaned.indexOf('{');\nconst braceEnd = cleaned.lastIndexOf('}');\nif (braceStart !== -1 && braceEnd !== -1 && braceEnd > braceStart) {\n  cleaned = cleaned.slice(braceStart, braceEnd + 1);\n}\ntry {\n  return { json: JSON.parse(cleaned) };\n} catch(e) {\n  return { json: {\n    confirmed_product_name: $('Parse Image Recognition').item.json.identified_product_name,\n    brand: $('Parse Image Recognition').item.json.brand,\n    model: $('Parse Image Recognition').item.json.model,\n    model_number: $('Parse Image Recognition').item.json.model_number,\n    upc: null, asin: null,\n    category: $('Parse Image Recognition').item.json.category,\n    subcategory: $('Parse Image Recognition').item.json.subcategory,\n    year_released: null, country_of_origin: null,\n    item_color: $('Parse Image Recognition').item.json.color,\n    colors_available: [],\n    dimensions: { length: null, width: null, height: null, weight: null, unit: null },\n    key_features: $('Parse Image Recognition').item.json.identifying_features || [],\n    materials: [], whats_in_box_new: [], whats_included_this_item: [],\n    condition_full_description: $('Parse Image Recognition').item.json.visible_condition_notes || \"Condition unknown\",\n    ebay_item_specifics: { Brand: $('Parse Image Recognition').item.json.brand, Model: $('Parse Image Recognition').item.json.model, MPN: \"Does Not Apply\", Type: \"\", Color: $('Parse Image Recognition').item.json.color, \"Unit Type\": \"N/A\", \"Country/Region of Manufacture\": \"Unknown\" },\n    short_description: \"Details unavailable — AI response parse failed: \" + e.message,\n    retail_price_usd: null, current_new_price_usd: null\n  }};\n}"
+        "jsCode": "const raw = $input.item.json.choices[0].message.content;\nlet cleaned = raw.replace(/```json|```/g, '').trim();\nconst braceStart = cleaned.indexOf('{');\nconst braceEnd = cleaned.lastIndexOf('}');\nif (braceStart !== -1 && braceEnd !== -1 && braceEnd > braceStart) {\n  cleaned = cleaned.slice(braceStart, braceEnd + 1);\n}\ntry {\n  return { json: JSON.parse(cleaned) };\n} catch(e) {\n  return { json: {\n    confirmed_product_name: $('Parse Image Recognition').item.json.identified_product_name,\n    brand: $('Parse Image Recognition').item.json.brand,\n    model: $('Parse Image Recognition').item.json.model,\n    model_number: $('Parse Image Recognition').item.json.model_number,\n    upc: null, asin: null,\n    category: $('Parse Image Recognition').item.json.category,\n    subcategory: $('Parse Image Recognition').item.json.subcategory,\n    year_released: null, country_of_origin: null,\n    item_color: $('Parse Image Recognition').item.json.color,\n    colors_available: [],\n    dimensions: { length: null, width: null, height: null, weight: null, unit: null },\n    key_features: $('Parse Image Recognition').item.json.identifying_features || [],\n    materials: [], whats_in_box_new: [], whats_included_this_item: [],\n    condition_full_description: $('Parse Image Recognition').item.json.visible_condition_notes || \"Condition unknown\",\n    ebay_item_specifics: { Brand: $('Parse Image Recognition').item.json.brand, Model: $('Parse Image Recognition').item.json.model, MPN: \"Does Not Apply\", Type: \"\", Color: $('Parse Image Recognition').item.json.color, \"Unit Type\": \"N/A\", \"Country/Region of Manufacture\": \"Unknown\" },\n    short_description: \"Details unavailable — AI response parse failed: \" + e.message,\n    retail_price_usd: null, current_new_price_usd: null,\n    comparable_search_query: $('Parse Image Recognition').item.json.identified_product_name\n  }};\n}"
       },
       "id": "30675182-562e-4d55-a5be-e9ac9cf7fd9b",
       "name": "Parse Product Research",
@@ -472,7 +478,7 @@
           "parameters": [
             {
               "name": "q",
-              "value": "={{ $('Parse Product Research').item.json.confirmed_product_name }} sold price {{ $('Set Variables').item.json.seller_condition }} ebay completed listings"
+              "value": "={{ $('Parse Product Research').item.json.comparable_search_query }} sold price {{ $('Set Variables').item.json.seller_condition }} ebay completed listings"
             },
             {
               "name": "count",
@@ -529,7 +535,7 @@
           "parameters": [
             {
               "name": "q",
-              "value": "={{ $('Parse Product Research').item.json.confirmed_product_name }} used price {{ $('Set Variables').item.json.seller_condition }} facebook marketplace craigslist offerup 2024 2025"
+              "value": "={{ $('Parse Product Research').item.json.comparable_search_query }} used price {{ $('Set Variables').item.json.seller_condition }} facebook marketplace craigslist offerup 2024 2025"
             },
             {
               "name": "count",
@@ -586,7 +592,7 @@
           "parameters": [
             {
               "name": "q",
-              "value": "={{ $('Parse Product Research').item.json.confirmed_product_name }} resale value price guide {{ $('Set Variables').item.json.seller_condition }} worth"
+              "value": "={{ $('Parse Product Research').item.json.comparable_search_query }} resale value price guide {{ $('Set Variables').item.json.seller_condition }} worth"
             },
             {
               "name": "count",
@@ -629,7 +635,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Basic {{ Buffer.from($env.EBAY_CLIENT_ID + ':' + $env.EBAY_CLIENT_SECRET).toString('base64') }}"
+              "value": "={{ $json.ebay_auth_header }}"
             },
             {
               "name": "Content-Type",
@@ -658,7 +664,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4192,
+        4384,
         0
       ],
       "onError": "continueRegularOutput",
@@ -675,7 +681,7 @@
           "parameters": [
             {
               "name": "q",
-              "value": "={{ $('Parse Product Research').item.json.confirmed_product_name }}"
+              "value": "={{ $('Parse Product Research').item.json.comparable_search_query }}"
             },
             {
               "name": "filter",
@@ -707,7 +713,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4400,
+        4608,
         0
       ],
       "onError": "continueRegularOutput",
@@ -735,7 +741,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  model: $env['AI_MODEL_VALUATION_' + $env.AI_PROVIDER],\n  max_tokens: 3500,\n  temperature: 0.1,\n  messages: [\n    {\n      role: \"system\",\n      content: \"You are a professional resale market analyst with deep expertise in pricing secondhand items across eBay, Facebook Marketplace, Craigslist, OfferUp, and other platforms. You analyze real market data to provide precise, realistic valuations and actionable pricing strategies. Your recommendations directly impact a seller's income — be accurate and conservative. Never guess; use the data provided. Always respond in raw, valid JSON only.\"\n    },\n    {\n      role: \"user\",\n      content: `Analyze the following data and provide a complete valuation for this resale item.\n\nPRODUCT PROFILE:\n${JSON.stringify($('Parse Product Research').item.json)}\n\nSELLER CONDITION: ${$('Set Variables').item.json.seller_condition}\nMISSING ITEMS: ${$('Set Variables').item.json.missing_items}\nSELLER-PROVIDED ORIGINAL PRICE: ${$('Set Variables').item.json.original_price || 'Not provided'}\n\nMARKET RESEARCH — eBay Sold/Active (web):\n${$('Brave Search 4: eBay Sold Prices').item.json.web?.results?.slice(0,6).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nMARKET RESEARCH — Used Market (FB, Craigslist, OfferUp):\n${$('Brave Search 5: Used Market Prices').item.json.web?.results?.slice(0,6).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nMARKET RESEARCH — Price Guides:\n${$('Brave Search 6: Price Guide / Resale Value').item.json.web?.results?.slice(0,4).map(r => '• ' + r.title + '\\n  ' + r.description).join('\\n\\n') ?? 'No results'}\n\nEBAY API LIVE DATA:\n${$('eBay: Browse API Search').item.json.itemSummaries?.slice(0,10).map(i => '• ' + i.title + ' — $' + i.price?.value + ' — ' + i.condition).join('\\n') ?? 'eBay API not available'}\n\nSCARCITY CHECK: If the product profile above indicates this item is discontinued, a convention/event exclusive, or a limited/numbered edition, apply a scarcity premium rather than depreciating from a \\\"new\\\" price the way you would for a mass-market item still in production — in that case, prioritize the eBay API live data and used-market search results over an uncertain retail/current-new price.\n\nRETAIL PRICE FROM RESEARCH: $${$('Parse Product Research').item.json.retail_price_usd ?? 'Unknown'}\nCURRENT NEW PRICE: $${$('Parse Product Research').item.json.current_new_price_usd ?? 'Unknown'}\n\nORIGINAL PRICE RULE: If a SELLER-PROVIDED ORIGINAL PRICE is given above, treat it as ground truth for original_retail_price_usd — sellers usually have a receipt or a clear memory of what they paid, which is more reliable than a price inferred from search results. Use it directly unless it is wildly implausible for the identified product (e.g. off by 10x). Only fall back to the research-derived retail price above when no seller-provided price was given.\n\nReturn ONLY this exact JSON:\n{\n  \"original_retail_price_usd\": \"number or null\",\n  \"current_new_price_usd\": \"number or null\",\n  \"market_value_used_usd\": \"number — fair used market value for THIS condition\",\n  \"ebay_sold_price_avg_usd\": \"number or null — average of recent eBay sold prices for similar condition\",\n  \"ebay_active_price_avg_usd\": \"number or null — average of current eBay active listings\",\n  \"facebook_marketplace_avg_usd\": \"number or null\",\n  \"price_sell_fast_usd\": \"number — price to sell within 1-3 days (aggressive but not giving it away)\",\n  \"price_maximize_profit_usd\": \"number — highest realistic price; may take 2-4 weeks\",\n  \"recommended_price_usd\": \"number — your recommended sweet spot (sells within ~1 week)\",\n  \"price_range_low_usd\": \"number — absolute floor (still fair)\",\n  \"price_range_high_usd\": \"number — ceiling (optimistic but not unrealistic)\",\n  \"condition_impact\": \"How the seller condition and missing items affect value versus a complete Like New example. 1-2 sentences.\",\n  \"pricing_rationale\": \"2-3 sentences explaining the recommended price and the market factors driving it.\",\n  \"sell_fast_strategy\": \"1-2 sentences: how to price and present this item to sell within 2-3 days.\",\n  \"maximize_profit_strategy\": \"1-2 sentences: how to hold out for maximum value (timing, platform, framing).\",\n  \"best_platform_to_sell\": \"eBay | Facebook Marketplace | Both | OfferUp | Other\",\n  \"best_platform_reason\": \"Why this platform maximizes value or speed for this specific item.\",\n  \"data_confidence\": \"high | medium | low\",\n  \"data_confidence_reason\": \"One sentence explaining confidence in the valuation data.\"\n}`\n    }\n  ]\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  model: $env['AI_MODEL_VALUATION_' + $env.AI_PROVIDER],\n  max_tokens: 3500,\n  temperature: 0.1,\n  messages: [\n    {\n      role: \"system\",\n      content: \"You are a professional resale market analyst with deep expertise in pricing secondhand items across eBay, Facebook Marketplace, Craigslist, OfferUp, and other platforms. You analyze real market data to provide precise, realistic valuations and actionable pricing strategies. Your recommendations directly impact a seller's income — be accurate and conservative. Never guess; use the data provided. When citing a comparable item's URL, copy it EXACTLY from the data provided below -- never invent, guess, or construct a URL. Always respond in raw, valid JSON only.\"\n    },\n    {\n      role: \"user\",\n      content: `Analyze the following data and provide a complete valuation for this resale item.\n\nPRODUCT PROFILE:\n${JSON.stringify($('Parse Product Research').item.json)}\n\nSELLER CONDITION: ${$('Set Variables').item.json.seller_condition}\nMISSING ITEMS: ${$('Set Variables').item.json.missing_items}\nSELLER-PROVIDED ORIGINAL PRICE: ${$('Set Variables').item.json.original_price || 'Not provided'}\nSELLER-PROVIDED COMPARABLE LISTING: ${$('Set Variables').item.json.seller_comparable_url || 'Not provided'}${$('Set Variables').item.json.seller_comparable_url ? '\\n' + (($('Fetch Seller Comparable').item.json.data || '').toString().slice(0, 3000)) : ''}\n\nMARKET RESEARCH — eBay Sold/Active (web):\n${$('Brave Search 4: eBay Sold Prices').item.json.web?.results?.slice(0,6).map(r => '• ' + r.title + '\\n  ' + r.description + '\\n  URL: ' + r.url).join('\\n\\n') ?? 'No results'}\n\nMARKET RESEARCH — Used Market (FB, Craigslist, OfferUp):\n${$('Brave Search 5: Used Market Prices').item.json.web?.results?.slice(0,6).map(r => '• ' + r.title + '\\n  ' + r.description + '\\n  URL: ' + r.url).join('\\n\\n') ?? 'No results'}\n\nMARKET RESEARCH — Price Guides:\n${$('Brave Search 6: Price Guide / Resale Value').item.json.web?.results?.slice(0,4).map(r => '• ' + r.title + '\\n  ' + r.description + '\\n  URL: ' + r.url).join('\\n\\n') ?? 'No results'}\n\nEBAY API LIVE DATA:\n${$('eBay: Browse API Search').item.json.itemSummaries?.slice(0,10).map(i => '• ' + i.title + ' — $' + i.price?.value + ' — ' + i.condition + '\\n  URL: ' + i.itemWebUrl).join('\\n') ?? 'eBay API not available'}\n\nSCARCITY CHECK: If the product profile above indicates this item is discontinued, a convention/event exclusive, or a limited/numbered edition, apply a scarcity premium rather than depreciating from a \\\"new\\\" price the way you would for a mass-market item still in production — in that case, prioritize the eBay API live data and used-market search results over an uncertain retail/current-new price.\n\nCOMPARABLES -- LIKE ITEMS, NOT JUST EXACT MATCHES: For niche or rare items, an identical-title match often will not exist in the data above. Do not treat that as \\\"no data\\\" -- instead look for items that are SIMILAR: same franchise/brand line, same general product type (e.g. another framed convention-exclusive art print, another discontinued collectible from the same maker), comparable size/format, or comparable scarcity profile. A similar item is meaningfully better evidence than no item, but weight it accordingly: cap data_confidence at \\\"medium\\\" (never \\\"high\\\") when your strongest comparables are similar rather than exact matches, and say so in data_confidence_reason and in each comparable's note.\n\nRETAIL PRICE FROM RESEARCH: $${$('Parse Product Research').item.json.retail_price_usd ?? 'Unknown'}\nCURRENT NEW PRICE: $${$('Parse Product Research').item.json.current_new_price_usd ?? 'Unknown'}\n\nORIGINAL PRICE RULE: If a SELLER-PROVIDED ORIGINAL PRICE is given above, treat it as ground truth for original_retail_price_usd — sellers usually have a receipt or a clear memory of what they paid, which is more reliable than a price inferred from search results. Use it directly unless it is wildly implausible for the identified product (e.g. off by 10x). Only fall back to the research-derived retail price above when no seller-provided price was given.\n\nReturn ONLY this exact JSON:\n{\n  \"original_retail_price_usd\": \"number or null\",\n  \"current_new_price_usd\": \"number or null\",\n  \"market_value_used_usd\": \"number — fair used market value for THIS condition\",\n  \"ebay_sold_price_avg_usd\": \"number or null — average of recent eBay sold prices for similar condition\",\n  \"ebay_active_price_avg_usd\": \"number or null — average of current eBay active listings\",\n  \"facebook_marketplace_avg_usd\": \"number or null\",\n  \"price_sell_fast_usd\": \"number — price to sell within 1-3 days (aggressive but not giving it away)\",\n  \"price_maximize_profit_usd\": \"number — highest realistic price; may take 2-4 weeks\",\n  \"recommended_price_usd\": \"number — your recommended sweet spot (sells within ~1 week)\",\n  \"price_range_low_usd\": \"number — absolute floor (still fair)\",\n  \"price_range_high_usd\": \"number — ceiling (optimistic but not unrealistic)\",\n  \"condition_impact\": \"How the seller condition and missing items affect value versus a complete Like New example. 1-2 sentences.\",\n  \"pricing_rationale\": \"2-3 sentences explaining the recommended price and the market factors driving it.\",\n  \"sell_fast_strategy\": \"1-2 sentences: how to price and present this item to sell within 2-3 days.\",\n  \"maximize_profit_strategy\": \"1-2 sentences: how to hold out for maximum value (timing, platform, framing).\",\n  \"best_platform_to_sell\": \"eBay | Facebook Marketplace | Both | OfferUp | Other\",\n  \"best_platform_reason\": \"Why this platform maximizes value or speed for this specific item.\",\n  \"data_confidence\": \"high | medium | low\",\n  \"data_confidence_reason\": \"One sentence explaining confidence in the valuation data.\",\n  \"comparables\": [\n    {\n      \"title\": \"The comparable item's title/name, copied from the data above\",\n      \"price_usd\": \"number or null\",\n      \"url\": \"The EXACT url copied from the data above (eBay API URL, a Brave search result URL, or the seller-provided comparable URL) -- null if no real url is available. NEVER invent one.\",\n      \"platform\": \"eBay | Facebook Marketplace | Other\",\n      \"match_type\": \"exact | similar | seller_provided -- exact means same product/edition/format; similar means related but not identical (see COMPARABLES guidance above)\",\n      \"note\": \"Short note on why this is a comparable and how much weight it carries\"\n    }\n  ]\n}\n\nList up to 5 comparables, most relevant first. Prefer exact matches; include similar items when exact ones are not available. If a SELLER-PROVIDED COMPARABLE LISTING was given above, include it as one entry with match_type \"seller_provided\" using its url and any price you can determine from the fetched page content. If there is truly no usable comparable data anywhere above, return an empty array -- do not fabricate entries.`\n    }\n  ]\n}) }}",
         "options": {}
       },
       "id": "d9038426-321c-4fb4-9c58-feb3832dbcb9",
@@ -743,7 +749,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4624,
+        5056,
         0
       ],
       "retryOnFail": true,
@@ -755,14 +761,14 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const raw = $input.item.json.choices[0].message.content;\nlet cleaned = raw.replace(/```json|```/g, '').trim();\nconst braceStart = cleaned.indexOf('{');\nconst braceEnd = cleaned.lastIndexOf('}');\nif (braceStart !== -1 && braceEnd !== -1 && braceEnd > braceStart) {\n  cleaned = cleaned.slice(braceStart, braceEnd + 1);\n}\ntry {\n  return { json: JSON.parse(cleaned) };\n} catch(e) {\n  return { json: {\n    original_retail_price_usd: $('Parse Product Research').item.json.retail_price_usd ?? null,\n    current_new_price_usd: $('Parse Product Research').item.json.current_new_price_usd ?? null,\n    market_value_used_usd: null, ebay_sold_price_avg_usd: null, ebay_active_price_avg_usd: null,\n    facebook_marketplace_avg_usd: null, price_sell_fast_usd: null, price_maximize_profit_usd: null,\n    recommended_price_usd: null, price_range_low_usd: null, price_range_high_usd: null,\n    condition_impact: \"Unavailable — AI response parse failed: \" + e.message,\n    pricing_rationale: \"Unavailable — valuation parse failed.\",\n    sell_fast_strategy: \"\", maximize_profit_strategy: \"\",\n    best_platform_to_sell: \"Both\", best_platform_reason: \"\",\n    data_confidence: \"low\", data_confidence_reason: \"AI response parse failed: \" + e.message\n  }};\n}"
+        "jsCode": "const raw = $input.item.json.choices[0].message.content;\nlet cleaned = raw.replace(/```json|```/g, '').trim();\nconst braceStart = cleaned.indexOf('{');\nconst braceEnd = cleaned.lastIndexOf('}');\nif (braceStart !== -1 && braceEnd !== -1 && braceEnd > braceStart) {\n  cleaned = cleaned.slice(braceStart, braceEnd + 1);\n}\ntry {\n  return { json: JSON.parse(cleaned) };\n} catch(e) {\n  return { json: {\n    original_retail_price_usd: $('Parse Product Research').item.json.retail_price_usd ?? null,\n    current_new_price_usd: $('Parse Product Research').item.json.current_new_price_usd ?? null,\n    market_value_used_usd: null, ebay_sold_price_avg_usd: null, ebay_active_price_avg_usd: null,\n    facebook_marketplace_avg_usd: null, price_sell_fast_usd: null, price_maximize_profit_usd: null,\n    recommended_price_usd: null, price_range_low_usd: null, price_range_high_usd: null,\n    condition_impact: \"Unavailable — AI response parse failed: \" + e.message,\n    pricing_rationale: \"Unavailable — valuation parse failed.\",\n    sell_fast_strategy: \"\", maximize_profit_strategy: \"\",\n    best_platform_to_sell: \"Both\", best_platform_reason: \"\",\n    data_confidence: \"low\", data_confidence_reason: \"AI response parse failed: \" + e.message,\n    comparables: []\n  }};\n}"
       },
       "id": "95e3633a-e4ed-43b1-9f48-4e59905654a6",
       "name": "Parse Valuation",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4848,
+        5280,
         0
       ],
       "notes": "Safely parses the valuation JSON, with a null-safe fallback on parse failure."
@@ -794,7 +800,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5072,
+        5504,
         0
       ],
       "retryOnFail": true,
@@ -813,7 +819,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5280,
+        5728,
         0
       ],
       "notes": "Safely parses the eBay listing JSON, with a conservative fallback listing on parse failure."
@@ -845,7 +851,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5504,
+        5952,
         0
       ],
       "retryOnFail": true,
@@ -864,7 +870,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5728,
+        6176,
         0
       ],
       "notes": "Safely parses the Facebook Marketplace post JSON, with a fallback post on parse failure."
@@ -896,7 +902,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  ai_status: \"complete\",\n  processing_completed_at: new Date().toISOString(),\n\n  identified_product_name: $('Parse Product Research').item.json.confirmed_product_name,\n  brand: $('Parse Product Research').item.json.brand,\n  model: $('Parse Product Research').item.json.model,\n  model_number: $('Parse Product Research').item.json.model_number,\n  category: $('Parse Product Research').item.json.category,\n  subcategory: $('Parse Product Research').item.json.subcategory,\n  item_color: $('Parse Product Research').item.json.item_color,\n  dimensions: $('Parse Product Research').item.json.dimensions,\n  key_features: $('Parse Product Research').item.json.key_features,\n  condition_description: $('Parse Product Research').item.json.condition_full_description,\n  whats_included: $('Parse Product Research').item.json.whats_included_this_item,\n\n  original_retail_price: $('Parse Valuation').item.json.original_retail_price_usd,\n  current_new_price: $('Parse Valuation').item.json.current_new_price_usd,\n  market_value: $('Parse Valuation').item.json.market_value_used_usd,\n  price_sell_fast: $('Parse Valuation').item.json.price_sell_fast_usd,\n  price_maximize_profit: $('Parse Valuation').item.json.price_maximize_profit_usd,\n  recommended_price: $('Parse Valuation').item.json.recommended_price_usd,\n  price_range_low: $('Parse Valuation').item.json.price_range_low_usd,\n  price_range_high: $('Parse Valuation').item.json.price_range_high_usd,\n  pricing_rationale: $('Parse Valuation').item.json.pricing_rationale,\n  best_platform: $('Parse Valuation').item.json.best_platform_to_sell,\n\n  ebay_title: $('Parse eBay Listing').item.json.ebay_title,\n  ebay_subtitle: $('Parse eBay Listing').item.json.ebay_subtitle,\n  ebay_condition_tier: $('Parse eBay Listing').item.json.ebay_condition_tier,\n  ebay_condition_description: $('Parse eBay Listing').item.json.ebay_condition_description,\n  ebay_description: $('Parse eBay Listing').item.json.ebay_description_html,\n  ebay_item_specifics: $('Parse eBay Listing').item.json.ebay_item_specifics,\n  ebay_buy_it_now_price: $('Parse eBay Listing').item.json.ebay_buy_it_now_price,\n  ebay_auction_start_price: $('Parse eBay Listing').item.json.ebay_auction_start_price,\n\n  fb_title: $('Parse Facebook Post').item.json.fb_title,\n  fb_price: $('Parse Facebook Post').item.json.fb_price,\n  fb_description: $('Parse Facebook Post').item.json.fb_description,\n  fb_category: $('Parse Facebook Post').item.json.fb_category,\n  fb_hashtags: $('Parse Facebook Post').item.json.fb_hashtags\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  ai_status: \"complete\",\n  processing_completed_at: new Date().toISOString(),\n\n  identified_product_name: $('Parse Product Research').item.json.confirmed_product_name,\n  brand: $('Parse Product Research').item.json.brand,\n  model: $('Parse Product Research').item.json.model,\n  model_number: $('Parse Product Research').item.json.model_number,\n  category: $('Parse Product Research').item.json.category,\n  subcategory: $('Parse Product Research').item.json.subcategory,\n  item_color: $('Parse Product Research').item.json.item_color,\n  dimensions: $('Parse Product Research').item.json.dimensions,\n  key_features: $('Parse Product Research').item.json.key_features,\n  condition_description: $('Parse Product Research').item.json.condition_full_description,\n  whats_included: $('Parse Product Research').item.json.whats_included_this_item,\n\n  original_retail_price: $('Parse Valuation').item.json.original_retail_price_usd,\n  current_new_price: $('Parse Valuation').item.json.current_new_price_usd,\n  market_value: $('Parse Valuation').item.json.market_value_used_usd,\n  price_sell_fast: $('Parse Valuation').item.json.price_sell_fast_usd,\n  price_maximize_profit: $('Parse Valuation').item.json.price_maximize_profit_usd,\n  recommended_price: $('Parse Valuation').item.json.recommended_price_usd,\n  price_range_low: $('Parse Valuation').item.json.price_range_low_usd,\n  price_range_high: $('Parse Valuation').item.json.price_range_high_usd,\n  pricing_rationale: $('Parse Valuation').item.json.pricing_rationale,\n  best_platform: $('Parse Valuation').item.json.best_platform_to_sell,\n  data_confidence: $('Parse Valuation').item.json.data_confidence,\n  data_confidence_reason: $('Parse Valuation').item.json.data_confidence_reason,\n  comparables: $('Parse Valuation').item.json.comparables,\n\n  ebay_title: $('Parse eBay Listing').item.json.ebay_title,\n  ebay_subtitle: $('Parse eBay Listing').item.json.ebay_subtitle,\n  ebay_condition_tier: $('Parse eBay Listing').item.json.ebay_condition_tier,\n  ebay_condition_description: $('Parse eBay Listing').item.json.ebay_condition_description,\n  ebay_description: $('Parse eBay Listing').item.json.ebay_description_html,\n  ebay_item_specifics: $('Parse eBay Listing').item.json.ebay_item_specifics,\n  ebay_buy_it_now_price: $('Parse eBay Listing').item.json.ebay_buy_it_now_price,\n  ebay_auction_start_price: $('Parse eBay Listing').item.json.ebay_auction_start_price,\n\n  fb_title: $('Parse Facebook Post').item.json.fb_title,\n  fb_price: $('Parse Facebook Post').item.json.fb_price,\n  fb_description: $('Parse Facebook Post').item.json.fb_description,\n  fb_category: $('Parse Facebook Post').item.json.fb_category,\n  fb_hashtags: $('Parse Facebook Post').item.json.fb_hashtags\n}) }}",
         "options": {}
       },
       "id": "f1962983-0cd6-4014-b334-e0113276b96d",
@@ -904,7 +910,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5952,
+        6400,
         0
       ],
       "onError": "continueErrorOutput",
@@ -917,7 +923,7 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        6160,
+        6608,
         0
       ],
       "notes": "End of the happy path. The app's Supabase Realtime subscription picks up ai_status=complete."
@@ -1078,6 +1084,44 @@
       "webhookId": "ceb3d7e3-b542-4612-99bc-de33f39ec738",
       "onError": "continueRegularOutput",
       "notes": "Sends a plain-text failure alert email. After import, select/create your SMTP credential on this node (n8n Settings → Credentials) — not env-var driven since n8n credentials aren't expression-capable."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Buffer.from() inside a {{ }} expression silently evaluates to an empty\n// string in n8n's expression sandbox (it is not full Node.js) -- that was\n// producing 'Basic ' with nothing after it, hence every eBay OAuth call\n// failing with invalid_client. Computing it here in a Code node (real\n// Node.js) and referencing the plain string downstream fixes it.\nreturn { json: { ebay_auth_header: 'Basic ' + Buffer.from($env.EBAY_CLIENT_ID + ':' + $env.EBAY_CLIENT_SECRET).toString('base64') } };"
+      },
+      "id": "d3a8f1c2-6b4e-4a9f-8c2d-1e7b5a3f9c40",
+      "name": "Build eBay Auth Header",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4160,
+        160
+      ],
+      "notes": "Precomputes the eBay Basic Auth header string. Must be a Code node -- Buffer is unavailable inside n8n's {{ }} expression sandbox."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Set Variables').item.json.seller_comparable_url || 'https://example.com/' }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "e4b9c2d3-7a5f-4b8e-9d3c-2f8a6b4e0d51",
+      "name": "Fetch Seller Comparable",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4832,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Best-effort raw fetch of a seller-provided comparable listing URL, if given. Not wired to the global error handler -- soft-fails (blank/unreachable URL) and Valuation just proceeds without it."
     }
   ],
   "connections": {
@@ -1346,7 +1390,7 @@
       "main": [
         [
           {
-            "node": "eBay: Get OAuth Token",
+            "node": "Build eBay Auth Header",
             "type": "main",
             "index": 0
           }
@@ -1375,7 +1419,7 @@
       "main": [
         [
           {
-            "node": "AI: Valuation Analysis",
+            "node": "Fetch Seller Comparable",
             "type": "main",
             "index": 0
           }
@@ -1524,6 +1568,28 @@
           }
         ]
       ]
+    },
+    "Build eBay Auth Header": {
+      "main": [
+        [
+          {
+            "node": "eBay: Get OAuth Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Seller Comparable": {
+      "main": [
+        [
+          {
+            "node": "AI: Valuation Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -1535,9 +1601,9 @@
   "meta": null,
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "18ee4452-3d59-48e1-a78e-e16e56daa049",
-  "activeVersionId": "18ee4452-3d59-48e1-a78e-e16e56daa049",
-  "versionCounter": 6,
+  "versionId": "0d2610cc-77e1-48b7-a98e-e891a0bdca1c",
+  "activeVersionId": "0d2610cc-77e1-48b7-a98e-e891a0bdca1c",
+  "versionCounter": 7,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "tags": [],
