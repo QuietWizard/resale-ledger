@@ -9,11 +9,14 @@ create table if not exists listings (
   photo_url text,
 
   -- Captured from the seller at photo-capture time; sent verbatim to n8n as the
-  -- webhook payload (item_id, photo_url, name, seller_condition, missing_items, seller_notes).
+  -- webhook payload (item_id, photo_url, name, seller_condition, missing_items, seller_notes,
+  -- original_price, comparable_url).
   name text,
   seller_condition text,   -- 'New' | 'Like New' | 'Good' | 'Fair' | 'Poor'
   missing_items text,
   seller_notes text,
+  seller_original_price numeric,
+  seller_comparable_url text,
 
   -- Pipeline status, written by n8n.
   ai_status text not null default 'processing',   -- 'processing' | 'complete' | 'failed'
@@ -46,6 +49,9 @@ create table if not exists listings (
   price_range_high numeric,
   pricing_rationale text,
   best_platform text,
+  data_confidence text,          -- 'high' | 'medium' | 'low'
+  data_confidence_reason text,
+  comparables jsonb,             -- [{ title, price_usd, url, platform, match_type, note }]
 
   -- eBay listing draft.
   ebay_title text,

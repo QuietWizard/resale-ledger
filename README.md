@@ -43,21 +43,30 @@ work happens in an n8n workflow that writes results back to Supabase.
 ## How capture works
 
 1. The **New Listing** page (`/new`) prompts for a photo (camera or upload), then shows
-   a form for `name`, `seller_condition` (New / Like New / Good / Fair / Poor), and
+   a form for `name`, `seller_condition` (New / Like New / Good / Fair / Poor),
+   `original_price` (what the seller knows it cost new, if anything), a comparable
+   listing URL (e.g. a similar item the seller already found for sale), and
    `missing_items` / `seller_notes` — all optional. The more of these the seller fills
    in, the more accurate the AI's condition-aware pricing and copy will be; leaving
-   them blank still works, the workflow just falls back to "Unknown" condition.
+   them blank still works, the workflow just falls back to "Unknown" condition and
+   web-search-derived pricing.
 2. On submit (`src/lib/capture.ts`), the front end inserts a row into `listings`
    (defaults to `ai_status = 'processing'`) with those fields, uploads the photo to the
    `listing-photos` bucket, and PATCHes the row with the resulting `photo_url`.
 3. It then POSTs `{ item_id, photo_url, name, seller_condition, missing_items,
-   seller_notes }` to the n8n webhook, with an `x-webhook-secret` header, and returns to
-   the feed.
+   seller_notes, original_price, comparable_url }` to the n8n webhook, with an
+   `x-webhook-secret` header, and returns to the feed.
 4. n8n responds immediately (see the workflow's "Respond to Webhook" node) and does
    the identify → research → value → draft work asynchronously, writing results back
    to the same `listings` row via the Supabase REST API.
 5. Because the front end subscribes to Supabase Realtime on `listings`, the moment n8n
    sets `ai_status = 'complete'` (or `'failed'`), the UI updates with no polling needed.
+6. From the item detail page (`/item/[id]`), **Edit & Retry** lets you correct any of
+   the seller-provided fields (e.g. fix a misidentified name, add an original price)
+   and re-run the pipeline against the same photo; **Delete** removes the listing and
+   its photo. Completed listings also show the AI's `data_confidence` and the
+   `comparables` it based the valuation on (title, price, and a real source URL where
+   available), so you can see at a glance how well-supported a price is.
 
 See [`n8n/resell-ledger-ai-workflow.json`](n8n/resell-ledger-ai-workflow.json) for the
 full pipeline (vision ID → Brave Search research → eBay API valuation → AI-written
@@ -75,6 +84,5 @@ does and which env vars it needs.
   feed can render thumbnails directly via their public URL.
 - If a listing's `ai_status` ends up `'failed'`, the item detail page shows
   `error_step` and `error_message` (written by n8n's error handler) instead of the
-  price/draft sections. There's currently no in-app retry button — re-fire the
-  webhook manually (or from n8n) with the same `item_id`/`photo_url` once the
-  underlying issue (bad API key, rate limit, etc.) is fixed.
+  price/draft sections. Use **Edit & Retry** to re-run the pipeline once the
+  underlying issue (bad API key, rate limit, misidentification, etc.) is fixed.
