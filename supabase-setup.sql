@@ -3,7 +3,7 @@
 -- exactly which node writes each column.
 
 -- 1. Table
-create table if not exists listings (
+create table if not exists resell_listings (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   photo_url text,
@@ -75,7 +75,7 @@ create table if not exists listings (
 );
 
 -- 2. Realtime: let the front end subscribe to live changes on this table
-alter publication supabase_realtime add table listings;
+alter publication supabase_realtime add table resell_listings;
 
 -- 3. Storage bucket for photos (public read so the feed can display thumbnails directly)
 insert into storage.buckets (id, name, public)
@@ -86,9 +86,9 @@ on conflict (id) do nothing;
 -- This is a single-user personal tool living on your homelab network, so the simplest
 -- approach is to allow the anon key full access to this one table/bucket rather than
 -- building out real auth. If you ever expose this beyond your LAN/VPN, tighten this.
-alter table listings enable row level security;
+alter table resell_listings enable row level security;
 
-create policy "allow all on listings" on listings
+create policy "allow all on resell_listings" on resell_listings
   for all using (true) with check (true);
 
 create policy "allow all on listing-photos" on storage.objects
