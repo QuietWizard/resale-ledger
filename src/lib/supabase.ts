@@ -12,7 +12,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export const LISTINGS_TABLE = "listings";
+export const LISTINGS_TABLE = "resell_listings";
 export const LISTING_PHOTOS_BUCKET = "listing-photos";
 
 // Fires the n8n identify/research/draft pipeline for a newly-captured listing.

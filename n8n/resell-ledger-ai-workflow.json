@@ -152,7 +152,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/listings?id=eq.{{ $('Set Variables').item.json.item_id }}",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/resell_listings?id=eq.{{ $('Set Variables').item.json.item_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -878,7 +878,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/listings?id=eq.{{ $('Set Variables').item.json.item_id }}",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/resell_listings?id=eq.{{ $('Set Variables').item.json.item_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -931,7 +931,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/listings?id=eq.{{ $('Set Variables').item.json.item_id }}",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/resell_listings?id=eq.{{ $('Set Variables').item.json.item_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

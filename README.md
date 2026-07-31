@@ -15,7 +15,7 @@ work happens in an n8n workflow that writes results back to Supabase.
 1. **Supabase**
    - Create a project at supabase.com (or point at your self-hosted instance).
    - Open the SQL editor and run `supabase-setup.sql` from this repo. This creates the
-     `listings` table, the `listing-photos` storage bucket, and enables Realtime.
+     `resell_listings` table, the `listing-photos` storage bucket, and enables Realtime.
    - Copy your Project URL and anon key from Settings → API.
 
 2. **n8n**
@@ -50,7 +50,7 @@ work happens in an n8n workflow that writes results back to Supabase.
    in, the more accurate the AI's condition-aware pricing and copy will be; leaving
    them blank still works, the workflow just falls back to "Unknown" condition and
    web-search-derived pricing.
-2. On submit (`src/lib/capture.ts`), the front end inserts a row into `listings`
+2. On submit (`src/lib/capture.ts`), the front end inserts a row into `resell_listings`
    (defaults to `ai_status = 'processing'`) with those fields, uploads the photo to the
    `listing-photos` bucket, and PATCHes the row with the resulting `photo_url`.
 3. It then POSTs `{ item_id, photo_url, name, seller_condition, missing_items,
@@ -58,8 +58,8 @@ work happens in an n8n workflow that writes results back to Supabase.
    `x-webhook-secret` header, and returns to the feed.
 4. n8n responds immediately (see the workflow's "Respond to Webhook" node) and does
    the identify → research → value → draft work asynchronously, writing results back
-   to the same `listings` row via the Supabase REST API.
-5. Because the front end subscribes to Supabase Realtime on `listings`, the moment n8n
+   to the same `resell_listings` row via the Supabase REST API.
+5. Because the front end subscribes to Supabase Realtime on `resell_listings`, the moment n8n
    sets `ai_status = 'complete'` (or `'failed'`), the UI updates with no polling needed.
 6. From the item detail page (`/item/[id]`), **Edit & Retry** lets you correct any of
    the seller-provided fields (e.g. fix a misidentified name, add an original price)
@@ -75,7 +75,7 @@ does and which env vars it needs.
 
 ## Notes
 
-- RLS on `listings` and the `listing-photos` bucket is currently wide open (see
+- RLS on `resell_listings` and the `listing-photos` bucket is currently wide open (see
   `supabase-setup.sql`) since this is a single-user tool on your own network.
   Tighten it if you ever expose this beyond your LAN/VPN. The same applies to
   `NEXT_PUBLIC_N8N_WEBHOOK_SECRET`, which is visible in the browser bundle — it's a
